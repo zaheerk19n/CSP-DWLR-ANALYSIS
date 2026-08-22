@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Settings</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        /* Google Font Import */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+        /* CSS Variables */
+        :root {
+            --primary-color: #007bff;
+            --primary-hover-color: #0056b3;
+            --background-color: #f4f7f6;
+            --surface-color: #ffffff;
+            --border-color: #e0e0e0;
+            --text-color: #333;
+            --light-text-color: #666;
+            --sidebar-bg: #2c3e50;
+            --sidebar-text: #ecf0f1;
+            --nav-item-hover: #34495e;
+            --active-nav-item: #007bff;
+            --active-nav-item-text: #ffffff;
+            --input-border: #ccc;
+            --focus-border: #007bff;
+            --button-bg: #007bff;
+            --button-hover-bg: #0056b3;
+            --button-text: #fff;
+            --danger-button-bg: #dc3545;
+            --danger-button-hover-bg: #c82333;
+            --shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+        }
+
+        /* Base Styles */
+        body {
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: var(--background-color);
+            color: var(--text-color);
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            min-height: 100vh;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        /* Container for the whole layout */
+        .container {
+            display: flex;
+            width: 100%;
+            max-width: 1200px;
+            background-color: var(--surface-color);
+            border-radius: 8px;
+            box-shadow: var(--shadow);
+            overflow: hidden;
+        }
+
+        /* Sidebar Styling */
+        .sidebar {
+            width: 280px;
+            background-color: var(--sidebar-bg);
+            color: var(--sidebar-text);
+            padding: 30px 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            border-right: 1px solid rgba(0, 0, 0, 0.1);
+            flex-shrink: 0;
+        }
+
+        .back-to-profile {
+            width: 100%;
+            text-align: center;
+            margin-bottom: 20px;
+            padding: 0 20px;
+        }
+
+        .back-to-profile a {
+            display: inline-flex;
+            align-items: center;
+            color: rgba(255, 255, 255, 0.8);
+            text-decoration: none;
+            font-size: 1em;
+            font-weight: 500;
+            transition: color 0.2s ease;
+        }
+
+        .back-to-profile a:hover {
+            color: var(--primary-color);
+        }
+
+        .back-to-profile a i {
+            margin-right: 10px;
+            font-size: 1.1em;
+        }
+
+        .settings-nav {
+            width: 100%;
+        }
+
+        .settings-nav ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .settings-nav li {
+            margin-bottom: 5px;
+        }
+
+        .settings-nav .nav-item {
+            display: flex;
+            align-items: center;
+            padding: 15px 25px;
+            color: var(--sidebar-text);
+            text-decoration: none;
+            font-size: 1.05em;
+            transition: background-color 0.2s ease, color 0.2s ease;
+        }
+
+        .settings-nav .nav-item:hover {
+            background-color: var(--nav-item-hover);
+        }
+
+        .settings-nav .nav-item.active {
+            background-color: var(--active-nav-item);
+            color: var(--active-nav-item-text);
+            border-left: 5px solid var(--primary-hover-color);
+            font-weight: 600;
+        }
+
+        .settings-nav .nav-item i {
+            margin-right: 15px;
+            font-size: 1.2em;
+        }
+
+        /* Content Area Styling */
+        .content {
+            flex-grow: 1;
+            padding: 40px;
+            background-color: var(--surface-color);
+        }
+
+        .content h1 {
+            font-size: 2.2em;
+            color: var(--text-color);
+            margin-bottom: 30px;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 15px;
+        }
+
+        /* Settings Section Styling */
+        .settings-section {
+            display: none;
+            padding-bottom: 30px;
+        }
+
+        .settings-section.active {
+            display: block;
+        }
+
+        .settings-section h2 {
+            font-size: 1.8em;
+            color: var(--primary-color);
+            margin-bottom: 25px;
+        }
+
+        /* Form Group Styling */
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 1em;
+            color: var(--light-text-color);
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+
+        .form-group input[type="text"],
+        .form-group input[type="email"],
+        .form-group input[type="password"],
+        .form-group textarea,
+        .form-group select {
+            width: calc(100% - 24px);
+            padding: 12px;
+            border: 1px solid var(--input-border);
+            border-radius: 6px;
+            font-size: 1em;
+            color: var(--text-color);
+            background-color: #fdfdfd;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .form-group input[type="text"]:focus,
+        .form-group input[type="email"]:focus,
+        .form-group input[type="password"]:focus,
+        .form-group textarea:focus,
+        .form-group select:focus {
+            border-color: var(--focus-border);
+            box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.25);
+            outline: none;
+        }
+
+        .form-group textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        /* Checkbox Specific Styling */
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .checkbox-group input[type="checkbox"] {
+            margin-right: 10px;
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+
+        .checkbox-group label {
+            margin-bottom: 0;
+            cursor: pointer;
+            color: var(--text-color);
+        }
+
+        /* Button Styling */
+        .save-button,
+        .action-button {
+            background-color: var(--button-bg);
+            color: var(--button-text);
+            padding: 12px 25px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 1.05em;
+            font-weight: 600;
+            transition: background-color 0.2s ease, transform 0.1s ease;
+            margin-top: 15px;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            margin-right: 10px;
+            margin-bottom: 10px;
+        }
+
+        .save-button:hover,
+        .action-button:hover {
+            background-color: var(--button-hover-bg);
+            transform: translateY(-1px);
+        }
+
+        .action-button i {
+            font-size: 1.1em;
+        }
+
+        .danger-button {
+            background-color: var(--danger-button-bg);
+        }
+
+        .danger-button:hover {
+            background-color: var(--danger-button-hover-bg);
+        }
+
+        /* Integrations list styling */
+        #integrations ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        #integrations li {
+            display: inline-block;
+        }
+
+        #integrations .action-button {
+            margin: 0;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 992px) {
+            .container {
+                flex-direction: column;
+                max-width: 768px;
+            }
+
+            .sidebar {
+                width: 100%;
+                padding: 20px;
+                flex-direction: row;
+                justify-content: space-around;
+                align-items: center;
+                border-right: none;
+                border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+                text-align: center;
+            }
+
+            .back-to-profile {
+                width: auto;
+                margin-bottom: 0;
+                margin-right: 20px;
+            }
+
+            .settings-nav {
+                width: auto;
+            }
+
+            .settings-nav ul {
+                display: flex;
+                flex-wrap: wrap;
+                justify-content: center;
+            }
+
+            .settings-nav li {
+                margin: 0 5px;
+            }
+
+            .settings-nav .nav-item {
+                padding: 10px 15px;
+                border-left: none;
+                border-bottom: 3px solid transparent;
+            }
+
+            .settings-nav .nav-item.active {
+                border-bottom: 3px solid var(--primary-hover-color);
+                border-left: none;
+            }
+
+            .settings-nav .nav-item i {
+                display: none;
+            }
+
+            .content {
+                padding: 30px 20px;
+            }
+
+            .content h1 {
+                font-size: 1.8em;
+                margin-bottom: 20px;
+            }
+
+            .settings-section h2 {
+                font-size: 1.5em;
+                margin-bottom: 20px;
+            }
+
+            .save-button,
+            .action-button {
+                width: auto;
+                display: inline-flex;
+            }
+
+            #integrations ul {
+                justify-content: center;
+            }
+        }
+
+        @media (max-width: 768px) {
+            body {
+                padding: 15px;
+            }
+
+            .sidebar {
+                flex-direction: column;
+                text-align: center;
+            }
+
+            .back-to-profile {
+                margin-right: 0;
+                margin-bottom: 20px;
+            }
+
+            .settings-nav ul {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .settings-nav li {
+                width: 100%;
+                margin: 0;
+            }
+
+            .settings-nav .nav-item {
+                justify-content: center;
+                padding: 12px 0;
+            }
+
+            .form-group input,
+            .form-group textarea,
+            .form-group select {
+                width: calc(100% - 20px);
+                padding: 10px;
+            }
+
+            .save-button,
+            .action-button {
+                width: 100%;
+                box-sizing: border-box;
+                margin-top: 10px;
+                margin-right: 0;
+            }
+
+            #integrations ul {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            #integrations li {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <aside class="sidebar">
+            <div class="back-to-profile">
+                <a href="profile.html"><i class="fas fa-arrow-left"></i> Back to Profile</a>
+            </div>
+            <nav class="settings-nav">
+                <ul>
+                    <li><a href="#" class="nav-item active" data-target="personal-info"><i class="fas fa-user"></i> Personal Information</a></li>
+                    <li><a href="#" class="nav-item" data-target="account-security"><i class="fas fa-shield-alt"></i> Account & Security</a></li>
+                    <li><a href="#" class="nav-item" data-target="notifications"><i class="fas fa-bell"></i> Notifications</a></li>
+                    <li><a href="#" class="nav-item" data-target="appearance"><i class="fas fa-paint-brush"></i> Appearance</a></li>
+                    <li><a href="#" class="nav-item" data-target="privacy-data"><i class="fas fa-lock"></i> Privacy & Data</a></li>
+                    <li><a href="#" class="nav-item" data-target="integrations"><i class="fas fa-puzzle-piece"></i> Integrations</a></li>
+                    <li><a href="#" class="nav-item" data-target="billing-plans"><i class="fas fa-credit-card"></i> Billing & Plans</a></li>
+                </ul>
+            </nav>
+        </aside>
+
+        <main class="content">
+            <h1>User Settings</h1>
+
+            <section id="personal-info" class="settings-section active">
+                <h2>Personal Information</h2>
+                <form>
+                    <div class="form-group">
+                        <label for="fullName">Full Name</label>
+                        <input type="text" id="fullName" name="fullName" value="John Doe">
+                    </div>
+                    <div class="form-group">
+                        <label for="username">Username</label>
+                        <input type="text" id="username" name="username" value="johndoe">
+                    </div>
+                    <div class="form-group">
+                        <label for="email">Email</label>
+                        <input type="email" id="email" name="email" value="john.doe@example.com">
+                    </div>
+                    <div class="form-group">
+                        <label for="bio">Bio</label>
+                        <textarea id="bio" name="bio" rows="4">A passionate learner and web developer.</textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="location">Location</label>
+                        <input type="text" id="location" name="location" value="Hyderabad, India">
+                    </div>
+                    <button type="submit" class="save-button">Save Changes</button>
+                </form>
+            </section>
+
+            <section id="account-security" class="settings-section">
+                <h2>Account & Security</h2>
+                <form>
+                    <div class="form-group">
+                        <label for="currentPassword">Current Password</label>
+                        <input type="password" id="currentPassword" name="currentPassword">
+                    </div>
+                    <div class="form-group">
+                        <label for="newPassword">New Password</label>
+                        <input type="password" id="newPassword" name="newPassword">
+                    </div>
+                    <div class="form-group">
+                        <label for="confirmNewPassword">Confirm New Password</label>
+                        <input type="password" id="confirmNewPassword" name="confirmNewPassword">
+                    </div>
+                    <div class="form-group checkbox-group">
+                        <input type="checkbox" id="twoFactorAuth" name="twoFactorAuth">
+                        <label for="twoFactorAuth">Enable Two-Factor Authentication</label>
+                    </div>
+                    <button type="submit" class="save-button">Update Security</button>
+                    <button type="button" class="action-button danger-button">Delete Account</button>
+                </form>
+            </section>
+
+            <section id="notifications" class="settings-section">
+                <h2>Notifications</h2>
+                <form>
+                    <div class="form-group checkbox-group">
+                        <input type="checkbox" id="emailActivity" name="emailActivity" checked>
+                        <label for="emailActivity">Email me about account activity</label>
+                    </div>
+                    <div class="form-group checkbox-group">
+                        <input type="checkbox" id="emailPromotions" name="emailPromotions">
+                        <label for="emailPromotions">Email me about promotions and offers</label>
+                    </div>
+                    <div class="form-group checkbox-group">
+                        <input type="checkbox" id="pushNotifications" name="pushNotifications" checked>
+                        <label for="pushNotifications">Enable push notifications</label>
+                    </div>
+                    <button type="submit" class="save-button">Update Notifications</button>
+                </form>
+            </section>
+
+            <section id="appearance" class="settings-section">
+                <h2>Appearance</h2>
+                <form>
+                    <div class="form-group">
+                        <label for="theme">Theme</label>
+                        <select id="theme" name="theme">
+                            <option value="light">Light</option>
+                            <option value="dark">Dark</option>
+                            <option value="system">System Default</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="fontSize">Font Size</label>
+                        <select id="fontSize" name="fontSize">
+                            <option value="small">Small</option>
+                            <option value="medium">Medium</option>
+                            <option value="large">Large</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="save-button">Apply Appearance</button>
+                </form>
+            </section>
+
+            <section id="privacy-data" class="settings-section">
+                <h2>Privacy & Data</h2>
+                <form>
+                    <div class="form-group checkbox-group">
+                        <input type="checkbox" id="publicProfile" name="publicProfile" checked>
+                        <label for="publicProfile">Make profile public</label>
+                    </div>
+                    <div class="form-group checkbox-group">
+                        <input type="checkbox" id="allowTracking" name="allowTracking">
+                        <label for="allowTracking">Allow personalized ads and tracking</label>
+                    </div>
+                    <div class="form-group checkbox-group">
+                        <input type="checkbox" id="dataExport" name="dataExport">
+                        <label for="dataExport">Export my data</label>
+                    </div>
+                    <button type="submit" class="save-button">Update Privacy</button>
+                    <button type="button" class="action-button">Request Data Export</button>
+                </form>
+            </section>
+
+            <section id="integrations" class="settings-section">
+                <h2>Integrations</h2>
+                <p>Connect your account with other services.</p>
+                <ul>
+                    <li><button class="action-button"><i class="fab fa-google"></i> Connect Google</button></li>
+                    <li><button class="action-button"><i class="fab fa-slack"></i> Connect Slack</button></li>
+                    <li><button class="action-button"><i class="fab fa-github"></i> Connect GitHub</button></li>
+                </ul>
+            </section>
+
+            <section id="billing-plans" class="settings-section">
+                <h2>Billing & Plans</h2>
+                <p>Manage your subscription, view invoices, and update payment methods.</p>
+                <button class="action-button">Manage Subscription</button>
+                <button class="action-button">Update Payment Info</button>
+                <button class="action-button">View Invoices</button>
+            </section>
+
+        </main>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const navItems = document.querySelectorAll('.nav-item');
+            const sections = document.querySelectorAll('.settings-section');
+
+            navItems.forEach(item => {
+                item.addEventListener('click', (e) => {
+                    e.preventDefault(); // Prevent default anchor link behavior
+
+                    // Remove 'active' class from all nav items
+                    navItems.forEach(nav => nav.classList.remove('active'));
+                    // Add 'active' class to the clicked nav item
+                    item.classList.add('active');
+
+                    // Get the target section ID from the data-target attribute
+                    const targetId = item.dataset.target;
+
+                    // Hide all sections
+                    sections.forEach(section => section.classList.remove('active'));
+
+                    // Show the target section
+                    const targetSection = document.getElementById(targetId);
+                    if (targetSection) {
+                        targetSection.classList.add('active');
+                    }
+                });
+            });
+
+            // Handle form submissions (basic example)
+            document.querySelectorAll('form').forEach(form => {
+                form.addEventListener('submit', (e) => {
+                    e.preventDefault(); // Prevent actual form submission
+
+                    // In a real application, you would send this data to a server.
+                    const formData = new FormData(form);
+                    const formObject = {};
+                    formData.forEach((value, key) => {
+                        if (form.querySelector(`#${key}`) && form.querySelector(`#${key}`).type === 'checkbox') {
+                            formObject[key] = form.querySelector(`#${key}`).checked;
+                        } else {
+                            formObject[key] = value;
+                        }
+                    });
+
+                    console.log(`Form submitted for section: ${form.closest('.settings-section').id}`, formObject);
+                    alert('Settings saved successfully! (This is a demo, no data was actually saved)');
+                });
+            });
+
+            // Handle Delete Account button click
+            const deleteAccountButton = document.querySelector('#account-security .danger-button');
+            if (deleteAccountButton) {
+                deleteAccountButton.addEventListener('click', () => {
+                    if (confirm('Are you absolutely sure you want to delete your account? This action cannot be undone.')) {
+                        alert('Account deletion initiated. (This is a demo)');
+                        // In a real app, send a request to the server to delete the account
+                        // and then redirect to a confirmation or login page.
+                    }
+                });
+            }
+
+            // Handle other action buttons (e.g., Request Data Export, Manage Subscription)
+            document.querySelectorAll('.action-button:not(.danger-button)').forEach(button => {
+                button.addEventListener('click', () => {
+                    const buttonText = button.textContent.trim();
+                    alert(`"${buttonText}" button clicked!`);
+                });
+            });
+        });
+    </script>
+</body>
+</html>

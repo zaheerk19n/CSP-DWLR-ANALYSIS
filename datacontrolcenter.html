@@ -1,0 +1,960 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>DWLR Data Control Center | CGWB</title>
+
+<!-- Google Fonts - Inter -->
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet" />
+<!-- Font Awesome for icons -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"/>
+<!-- Your custom dashboard CSS -->
+<link rel="stylesheet" href="dash.css" />
+
+<!-- PapaParse for CSV parsing -->
+<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+
+<style>
+  /* Base layout consistent with dashboard */
+  body {
+    display: flex; /* Sidebar and main content side-by-side */
+    min-height: 100vh;
+    /* REMOVED: overflow: hidden; -- This was preventing overall page scrolling */
+    background-color: var(--light-grey-bg);
+    color: var(--text-dark);
+    font-family: 'Inter', sans-serif;
+    transition: background-color var(--transition-speed), color var(--transition-speed);
+  }
+
+  .main {
+    flex-grow: 1;
+    padding: var(--spacing-md);
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto; /* Enable scrolling for the main content area */
+  }
+
+  h1 {
+    text-align: center;
+    margin-bottom: var(--spacing-md);
+    color: var(--primary-blue);
+    font-size: var(--font-size-xl);
+  }
+
+  /* Horizontal Navigation Bar for Data Control Actions */
+  .horizontal-nav {
+    display: flex;
+    flex-wrap: wrap; /* Allow buttons to wrap on smaller screens */
+    gap: var(--spacing-sm);
+    background-color: var(--white-bg);
+    padding: var(--spacing-sm);
+    border-radius: var(--border-radius);
+    box-shadow: 0 2px 10px var(--shadow-light);
+    margin-bottom: var(--spacing-md);
+    justify-content: center; /* Center buttons horizontally */
+  }
+
+  .horizontal-nav .nav-btn {
+    background: var(--primary-blue);
+    color: var(--white-bg);
+    border: none;
+    padding: 10px 15px;
+    border-radius: var(--border-radius);
+    font-size: var(--font-size-md);
+    cursor: pointer;
+    transition: background-color 0.3s ease, transform 0.2s ease;
+    display: flex; /* For icon and text alignment */
+    align-items: center;
+    gap: 8px; /* Space between icon and text */
+    white-space: nowrap; /* Prevent text wrapping inside button */
+  }
+
+  .horizontal-nav .nav-btn:hover {
+    background: var(--dark-navy);
+    transform: translateY(-2px);
+  }
+
+  .horizontal-nav .nav-btn:disabled {
+    background: var(--muted-color);
+    cursor: not-allowed;
+    transform: none;
+  }
+
+  .horizontal-nav .nav-btn.active {
+    background: var(--dark-navy); /* Active state styling */
+    box-shadow: inset 0 2px 5px rgba(0,0,0,0.2);
+  }
+
+  /* Content Sections */
+  .data-section {
+    background: var(--white-bg);
+    padding: var(--spacing-md);
+    border-radius: var(--border-radius);
+    box-shadow: 0 4px 12px var(--shadow-light);
+    max-width: 900px; /* Max width for sections */
+    margin: var(--spacing-md) auto; /* Center sections */
+    width: 100%;
+  }
+
+  .data-section p {
+    font-weight: 600;
+    margin-bottom: var(--spacing-sm);
+    color: var(--text-dark);
+  }
+
+  input[type="text"],
+  input[type="number"],
+  input[type="datetime-local"],
+  select,
+  textarea {
+    display: block;
+    width: 100%;
+    padding: 10px;
+    margin-top: 5px;
+    margin-bottom: 15px;
+    border: 1px solid var(--border-light);
+    border-radius: var(--border-radius);
+    font-size: var(--font-size-md);
+    background-color: var(--light-grey-bg);
+    color: var(--text-dark);
+    transition: border-color 0.3s, background-color 0.3s;
+  }
+  input[type="file"] {
+    display: block;
+    width: fit-content;
+    margin: 0 auto 15px auto;
+    padding: 10px;
+    border: 1px solid var(--border-light);
+    border-radius: var(--border-radius);
+    background-color: var(--white-bg);
+    cursor: pointer;
+    color: var(--text-dark); /* Ensure text color is visible */
+  }
+
+  input[type="file"]::-webkit-file-upload-button {
+    background-color: var(--primary-blue);
+    color: white;
+    padding: 8px 15px;
+    border: none;
+    border-radius: var(--border-radius);
+    cursor: pointer;
+    margin-right: 10px;
+    transition: background-color var(--transition-speed);
+  }
+
+  input[type="file"]::-webkit-file-upload-button:hover {
+    background-color: var(--dark-navy);
+  }
+
+  input:focus, select:focus, textarea:focus {
+    border-color: var(--primary-blue);
+    outline: none;
+    background-color: var(--white-bg);
+    box-shadow: 0 0 0 2px rgba(0, 77, 153, 0.2);
+  }
+
+  .data-section button[type="submit"],
+  .data-section button#bulkAddBtn,
+  .data-section button#generateDemoBtn {
+    padding: 10px 20px;
+    background: var(--success-color); /* Green for adding/generating */
+    color: var(--white-bg);
+    border: none;
+    border-radius: var(--border-radius);
+    font-size: var(--font-size-md);
+    cursor: pointer;
+    transition: background 0.3s ease-in-out;
+    width: fit-content;
+    margin-top: 10px;
+  }
+  .data-section button[type="submit"]:hover,
+  .data-section button#bulkAddBtn:hover,
+  .data-section button#generateDemoBtn:hover {
+    background: #218f51; /* Darker green on hover */
+  }
+
+  button#downloadBtn {
+    background: var(--info-color); /* Blue for download */
+  }
+  button#downloadBtn:hover:not(:disabled) {
+    background: #2a72b0; /* Darker blue on hover */
+  }
+
+  button:disabled {
+    background: var(--muted-color);
+    cursor: not-allowed;
+  }
+
+  #csvOutput {
+    background: var(--light-grey-bg);
+    border: 1px solid var(--border-light);
+    padding: var(--spacing-md);
+    margin: var(--spacing-md) auto;
+    border-radius: var(--border-radius);
+    font-family: monospace;
+    max-width: 900px;
+    width: 100%;
+    white-space: pre-wrap;
+    max-height: 400px; /* Limit height for preview, enable internal scrolling */
+    overflow-y: auto;
+    font-size: 0.95rem;
+    color: var(--text-dark);
+    box-shadow: inset 0 1px 3px rgba(0,0,0,0.05);
+  }
+
+  /* Table styles for regions management */
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    margin-top: var(--spacing-md);
+    background-color: var(--white-bg);
+    border-radius: var(--border-radius);
+    overflow: hidden; /* For rounded corners on table */
+  }
+  th, td {
+    border: 1px solid var(--border-light);
+    padding: 10px;
+    text-align: left;
+    color: var(--text-dark);
+  }
+  th {
+    background-color: var(--primary-blue);
+    color: var(--white-bg);
+    font-weight: 600;
+  }
+  .region-row:hover {
+    background-color: var(--light-grey-bg);
+    cursor: pointer;
+  }
+  .region-row button {
+    background-color: var(--danger-color); /* Red for remove button */
+    color: var(--white-bg);
+    padding: 6px 10px;
+    border-radius: 4px;
+    font-size: var(--font-size-sm);
+    transition: background-color 0.3s ease;
+    margin: 0; /* Override margin from general button style */
+    width: auto;
+  }
+  .region-row button:hover {
+    background-color: #c0392b;
+  }
+
+  /* Responsive Adjustments for small screens */
+  @media (max-width: 768px) {
+    body {
+      flex-direction: column;
+    }
+    .sidebar {
+      width: 100%;
+      flex-direction: row; /* Stack menu items horizontally */
+      justify-content: center;
+      padding: var(--spacing-sm) var(--spacing-xs);
+      overflow-x: auto; /* Allow horizontal scrolling for sidebar menu */
+      box-shadow: 0 2px 10px var(--shadow-light);
+    }
+    .sidebar-header h1 {
+      font-size: 1.5rem;
+    }
+    .sidebar-menu {
+      justify-content: center;
+      flex-wrap: nowrap; /* Prevent wrapping in horizontal sidebar */
+    }
+    .sidebar-menu li {
+      margin: 0 5px;
+    }
+    .sidebar a {
+      padding: 8px 12px;
+      font-size: 0.85rem;
+      gap: 6px;
+    }
+    .main {
+      padding: var(--spacing-sm);
+    }
+    .topbar {
+      flex-direction: column;
+      align-items: flex-start;
+      padding: var(--spacing-xs);
+    }
+    .topbar-left {
+      width: 100%;
+      margin-bottom: var(--spacing-xs);
+    }
+    .search-form {
+      max-width: 100%;
+    }
+    .topbar-right {
+      width: 100%;
+      justify-content: space-around;
+      gap: var(--spacing-xs);
+    }
+    .user-dropdown .user-info .username {
+      display: none;
+    }
+    .horizontal-nav {
+      flex-direction: column; /* Stack buttons vertically on small screens */
+      align-items: stretch; /* Stretch buttons to full width */
+      padding: var(--spacing-xs);
+      gap: var(--spacing-xs);
+    }
+    .horizontal-nav .nav-btn {
+      width: 100%; /* Full width for stacked buttons */
+      justify-content: center; /* Center content within button */
+    }
+    .data-section {
+      padding: var(--spacing-sm);
+      margin: var(--spacing-sm) auto;
+    }
+    #csvOutput {
+      max-height: 250px; /* Keep a limit on small screens */
+    }
+  }
+</style>
+</head>
+<body data-theme="light">
+  <!-- Sidebar Navigation from dash.html -->
+  <nav class="sidebar" aria-label="Sidebar Navigation">
+    <div class="sidebar-header">
+      <h1>DWLR <br> Dashboard</h1>
+    </div>
+    <ul class="sidebar-menu">
+      <li><a href="dash.html">🏠 Home</a></li>
+      <li><a href="map.html">🗺️ Map View</a></li>
+      <li><a href="alerts.html">⚠️ Alerts</a></li>
+      <li><a href="datacontrolcenter.html" aria-current="page">🖥️ Data Center</a></li>
+      <li><a href="notifi.html">🔔 Notifications</a></li>
+      <li><a href="assist.html">👨‍💻 Assistant</a></li>
+    </ul>
+  </nav>
+
+  <main class="main">
+    <!-- Topbar from dash.html -->
+    <header class="topbar">
+      <div class="topbar-left">
+        <form role="search" class="search-form">
+          <span class="search-icon">
+              <i class="fas fa-search"></i>
+            </span>
+          <input type="text" placeholder="      Search..." class="search-input" aria-label="Search dashboard" id="searchInput" />
+        </form>
+      </div>
+      <div class="topbar-right">
+        <span id="clock" aria-label="Current time">🕓12:00 PM</span>
+        <button class="theme-toggle-btn" onclick="toggleDarkMode()" aria-label="Toggle Dark Mode" title="Switch Mode"><img src="images/day-and-night.png" alt="🌙" height="28"></button>
+        <a href="settings.html" class="settings-link" title="Settings"><img src="images/cogwheel.png" alt="⚙️" height="28"></a>
+        <div class="user-dropdown" tabindex="0" aria-haspopup="true" aria-expanded="false">
+          <span class="user-info"><img src="images/profile1.png" alt="👤" height="28"><span class="username"></span></span>
+          <div class="dropdown-content" role="menu">
+            <a href="profile.html" role="menuitem">Profile</a>
+            <a href="logout.html" role="menuitem"><span style="color: #e03e3e;">Logout</span></a>
+
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- Horizontal Navigation Bar -->
+    <div class="horizontal-nav">
+      <button class="nav-btn active" id="btnUpload" tabindex="0">📁 Upload Data</button>
+      <button class="nav-btn" id="btnManualEntry" tabindex="0">✍️ Manual Entry</button>
+      <button class="nav-btn" id="btnBulkPaste" tabindex="0">📥 Bulk Paste</button>
+      <button class="nav-btn" id="btnGenerateDemo" tabindex="0">⚙️ Generate Demo</button>
+      <button class="nav-btn" id="btnRegions" tabindex="0">🌍 Manage Regions</button>
+      <button class="nav-btn" id="btnDownload" tabindex="0" disabled>⬇️ Download CSV</button>
+    </div>
+
+    <h1>📋 DWLR Data Control Center</h1>
+
+    <section id="sectionUpload" class="data-section">
+      <p><strong>Step 1:</strong> Upload your existing <code>DWLR_Sample_Data_Full.csv</code> to begin editing, or proceed to generate new data.</p>
+      <input type="file" id="csvFileInput" accept=".csv" />
+    </section>
+
+    <section id="sectionManualEntry" class="data-section" hidden>
+      <p><strong>Step 2a:</strong> Add a single DWLR entry manually.</p>
+      <form id="dataForm">
+        <input type="text" id="Device_ID" placeholder="Device_ID (e.g., DWLR_011)" required />
+        <input type="text" id="Location" placeholder="Location (Region Name)" required />
+        <input type="datetime-local" id="Timestamp" required />
+        <input type="number" step="0.01" id="Water_Level_m" placeholder="Water Level (m)" required />
+        <input type="number" id="Battery_Level" placeholder="Battery Level (%)" required />
+        <select id="Signal_Status" required>
+          <option value="Online">Online</option>
+          <option value="Offline">Offline</option>
+        </select>
+        <input type="text" id="Anomaly_Flag" placeholder="Anomaly Flag (e.g., Normal, Low Battery)" value="Normal" required />
+        <button type="submit">➕ Add Entry</button>
+      </form>
+    </section>
+
+    <section id="sectionBulkPaste" class="data-section" hidden>
+      <p><strong>Step 2b:</strong> Paste multiple DWLR rows (comma-separated). Ensure columns match the header: <code>Device_ID,Location,Timestamp,Water_Level_m,Battery_Level,Signal_Status,Anomaly_Flag</code></p>
+      <textarea id="bulkInput" placeholder="Paste rows here, one per line..." rows="8"></textarea>
+      <button id="bulkAddBtn">📥 Add Bulk Rows</button>
+    </section>
+
+    <section id="sectionGenerateDemo" class="data-section" hidden>
+      <p><strong>Step 2c:</strong> Generate a batch of demo DWLR entries. This will add new data to your current dataset.</p>
+      <button id="generateDemoBtn">⚙️ Auto-Generate Test Rows</button>
+    </section>
+
+    <section id="sectionRegions" class="data-section" hidden>
+      <p><strong>Manage Regions and their Geographic Coordinates.</strong> These coordinates are used for map visualization.</p>
+      <table id="regionsTable" aria-label="Regions list">
+        <thead>
+          <tr>
+            <th>Region Name</th>
+            <th>Latitude</th>
+            <th>Longitude</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody id="regionsBody">
+          <!-- Dynamically populated -->
+        </tbody>
+      </table>
+      <form id="regionForm" style="margin-top:1rem;">
+        <p>Add New Region:</p>
+        <input type="text" id="regionName" placeholder="Region Name (e.g., South Region)" required />
+        <input type="number" step="0.000001" id="regionLat" placeholder="Latitude (e.g., 28.7041)" required />
+        <input type="number" step="0.000001" id="regionLong" placeholder="Longitude (e.g., 77.1025)" required />
+        <button type="submit">➕ Add Region</button>
+      </form>
+    </section>
+
+    <section id="sectionDownload" class="data-section">
+      <p><strong>Step 3:</strong> Review the current CSV content below and download your updated file.</p>
+      <button id="downloadBtn" disabled>⬇️ Download Updated CSV</button>
+    </section>
+
+    <div id="csvOutput">CSV content will appear here...</div>
+  </main>
+
+<script>
+(() => {
+  // Cached DOM elements
+  const sections = {
+    upload: document.getElementById("sectionUpload"),
+    manualEntry: document.getElementById("sectionManualEntry"),
+    bulkPaste: document.getElementById("sectionBulkPaste"),
+    generateDemo: document.getElementById("sectionGenerateDemo"),
+    regions: document.getElementById("sectionRegions"),
+    download: document.getElementById("sectionDownload"),
+  };
+  const navButtons = {
+    upload: document.getElementById("btnUpload"),
+    manualEntry: document.getElementById("btnManualEntry"),
+    bulkPaste: document.getElementById("btnBulkPaste"),
+    generateDemo: document.getElementById("btnGenerateDemo"),
+    regions: document.getElementById("btnRegions"),
+    download: document.getElementById("btnDownload"),
+  };
+  const inputs = {
+    csvFileInput: document.getElementById("csvFileInput"),
+    dataForm: document.getElementById("dataForm"),
+    bulkInput: document.getElementById("bulkInput"),
+    csvOutput: document.getElementById("csvOutput"),
+    regionsBody: document.getElementById("regionsBody"),
+    regionForm: document.getElementById("regionForm"),
+    regionName: document.getElementById("regionName"),
+    regionLat: document.getElementById("regionLat"),
+    regionLong: document.getElementById("regionLong"),
+  };
+  const actionButtons = { // Grouping buttons within sections
+    formSubmit: document.querySelector("#dataForm button"),
+    bulkAddBtn: document.getElementById("bulkAddBtn"),
+    generateDemoBtn: document.getElementById("generateDemoBtn"),
+    downloadBtn: document.getElementById("downloadBtn"),
+  };
+
+
+  // Data storage
+  let csvLines = []; // Raw CSV lines including header
+  let csvHeader = ["Device_ID", "Location", "Timestamp", "Water_Level_m", "Battery_Level", "Signal_Status", "Anomaly_Flag"]; // Default header
+  let regions = {}; // key = region name, value = { lat, long }
+  let allLocData = {}; // For loc.csv data, keyed by Device_ID
+
+
+  // --- Helper Functions ---
+
+  /**
+   * Shows only the specified content section and highlights its corresponding nav button.
+   * @param {string} sectionName - The ID of the section to show (e.g., "upload").
+   */
+  function showSection(sectionName) {
+    Object.keys(sections).forEach(key => {
+      sections[key].hidden = (key !== sectionName);
+    });
+    Object.keys(navButtons).forEach(key => {
+      navButtons[key].classList.remove('active');
+    });
+    if (navButtons[sectionName]) {
+      navButtons[sectionName].classList.add('active');
+    }
+    updatePreview(); // Update preview whenever section changes
+  }
+
+  /**
+   * Updates the state of the download button based on whether there's CSV data.
+   */
+  function updateDownloadButtonState() {
+    actionButtons.downloadBtn.disabled = csvLines.length <= 1; // Disabled if only header or no data
+  }
+
+  /**
+   * Updates the CSV content preview area.
+   */
+  function updatePreview() {
+    inputs.csvOutput.textContent = csvLines.join("\n");
+    updateDownloadButtonState();
+  }
+
+  /**
+   * Formats a Date object or datetime-local string to "dd-mm-yyyy hh:mm".
+   * @param {string} datetime - A datetime-local input value or ISO string.
+   * @returns {string} Formatted timestamp string.
+   */
+  function formatTimestamp(datetime) {
+    const date = new Date(datetime);
+    if (isNaN(date)) return ''; // Return empty if invalid date
+
+    const pad = n => n.toString().padStart(2, "0");
+    const year = date.getFullYear();
+    const month = pad(date.getMonth() + 1);
+    const day = pad(date.getDate());
+    const hours = pad(date.getHours());
+    const minutes = pad(date.getMinutes());
+    return `${day}-${month}-${year} ${hours}:${minutes}`;
+  }
+
+  /**
+   * Parses regions from the current `csvLines` based on the 'Location' column.
+   * Also attempts to find Lat/Long if those columns exist.
+   */
+  function parseRegionsFromCSV() {
+    // Clear existing regions before parsing from current CSV data
+    regions = {};
+    const locationIdx = csvHeader.indexOf("Location");
+    const latIdx = csvHeader.indexOf("Location_Latitude"); // Assuming these column names
+    const longIdx = csvHeader.indexOf("Location_Longitude");
+
+    if (locationIdx === -1) {
+      console.warn("CSV header does not contain 'Location' column.");
+      return;
+    }
+
+    // Start from 1 to skip header
+    for (let i = 1; i < csvLines.length; i++) {
+      const row = Papa.parse(csvLines[i], { header: false }).data[0]; // Safely parse line as array
+      if (row && row[locationIdx]) {
+        const locName = row[locationIdx].trim();
+        if (locName && !(locName in regions)) {
+          // If Lat/Long columns exist, use them, otherwise default to 0
+          const lat = (latIdx !== -1 && row[latIdx]) ? parseFloat(row[latIdx]) : 0;
+          const long = (longIdx !== -1 && row[longIdx]) ? parseFloat(row[longIdx]) : 0;
+          regions[locName] = { lat: isNaN(lat) ? 0 : lat, long: isNaN(long) ? 0 : long };
+        }
+      }
+    }
+    renderRegionsTable();
+  }
+
+  /**
+   * Renders the table of regions for management.
+   */
+  function renderRegionsTable() {
+    inputs.regionsBody.innerHTML = "";
+    Object.entries(regions).forEach(([name, { lat, long }]) => {
+      const tr = document.createElement("tr");
+      tr.classList.add("region-row");
+      tr.innerHTML = `
+        <td>${name}</td>
+        <td>${lat.toFixed(6)}</td>
+        <td>${long.toFixed(6)}</td>
+        <td><button type="button" data-region="${name}" aria-label="Remove region ${name}">❌ Remove</button></td>
+      `;
+      inputs.regionsBody.appendChild(tr);
+    });
+  }
+
+  // --- Event Listeners ---
+
+  // Topbar functionality (Clock and Dark Mode)
+  document.addEventListener('DOMContentLoaded', () => {
+    updateClock();
+    setInterval(updateClock, 1000); // Update clock every second
+  });
+  function updateClock() {
+    const clockElem = document.getElementById('clock');
+    if (clockElem) {
+      clockElem.textContent = new Date().toLocaleTimeString();
+    }
+  }
+  function toggleDarkMode() {
+    document.body.classList.toggle('dark');
+  }
+
+  // Navigation button handlers
+  navButtons.upload.addEventListener("click", () => showSection("upload"));
+  navButtons.manualEntry.addEventListener("click", () => showSection("manualEntry"));
+  navButtons.bulkPaste.addEventListener("click", () => showSection("bulkPaste"));
+  navButtons.generateDemo.addEventListener("click", () => showSection("generateDemo"));
+  navButtons.regions.addEventListener("click", () => {
+    showSection("regions");
+    renderRegionsTable(); // Re-render table to ensure it's up-to-date
+  });
+  navButtons.download.addEventListener("click", () => showSection("download"));
+
+
+  // Load CSV file from input
+  inputs.csvFileInput.addEventListener("change", async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    try {
+      const text = await file.text();
+      Papa.parse(text, {
+        header: true,
+        dynamicTyping: true,
+        skipEmptyLines: true,
+        complete: function (results) {
+          csvHeader = Object.keys(results.data[0] || {}); // Get header from parsed data
+          const parsedRows = results.data.map(row => Papa.unparse([row], { header: false }).trim()); // Convert objects back to CSV lines
+          csvLines = [csvHeader.join(','), ...parsedRows]; // Reconstruct csvLines with the new header
+          parseRegionsFromCSV(); // Parse regions from the newly loaded data
+          updatePreview();
+          alert("CSV loaded successfully! Showing " + (csvLines.length - 1) + " data rows.");
+        }
+      });
+    } catch (error) {
+      console.error("Error loading or parsing CSV:", error);
+      alert("Failed to load CSV. Please check console for details.");
+    }
+  });
+
+
+  // Manual Entry form submit
+  inputs.dataForm.addEventListener("submit", e => {
+    e.preventDefault();
+
+    const newEntry = {
+      Device_ID: document.getElementById("Device_ID").value.trim(),
+      Location: document.getElementById("Location").value.trim(),
+      Timestamp: formatTimestamp(document.getElementById("Timestamp").value),
+      Water_Level_m: parseFloat(document.getElementById("Water_Level_m").value),
+      Battery_Level: parseInt(document.getElementById("Battery_Level").value),
+      Signal_Status: document.getElementById("Signal_Status").value,
+      Anomaly_Flag: document.getElementById("Anomaly_Flag").value.trim(),
+      // Add other fields if your CSV has them and you want to manage them
+      Location_Latitude: 0, // Default, will try to get from regions
+      Location_Longitude: 0, // Default, will try to get from regions
+    };
+
+    if (!newEntry.Device_ID || !newEntry.Location || !newEntry.Timestamp || isNaN(newEntry.Water_Level_m) || isNaN(newEntry.Battery_Level) || !newEntry.Signal_Status) {
+      alert("Please fill all required fields correctly.");
+      return;
+    }
+
+    // Ensure header exists or create a default one
+    if (csvLines.length === 0) {
+      csvLines.push(csvHeader.join(","));
+    }
+
+    // Update region info for this new entry
+    if (!(newEntry.Location in regions)) {
+      regions[newEntry.Location] = { lat: 0, long: 0 }; // Add with default coords
+      alert(`New region "${newEntry.Location}" added with default coordinates (0,0). You can update it in "Manage Regions".`);
+      renderRegionsTable();
+    }
+    // Update lat/long for new entry if region exists in `regions`
+    if (newEntry.Location in regions) {
+        newEntry.Location_Latitude = regions[newEntry.Location].lat;
+        newEntry.Location_Longitude = regions[newEntry.Location].long;
+    }
+
+    // Convert object to CSV line matching current header order
+    const valuesInOrder = csvHeader.map(header => {
+        // Handle cases where a column might not be in newEntry but exists in header (e.g., from an uploaded CSV)
+        // or ensure it defaults to empty string if not applicable to manual entry
+        const value = newEntry[header];
+        if (value === undefined || value === null) {
+            // For Location_Latitude/Longitude, use values from regions if location matches
+            if (header === 'Location_Latitude' && newEntry.Location in regions) return regions[newEntry.Location].lat;
+            if (header === 'Location_Longitude' && newEntry.Location in regions) return regions[newEntry.Location].long;
+            return ''; // Default to empty string for missing fields
+        }
+        return value;
+    });
+
+    csvLines.push(valuesInOrder.join(","));
+    updatePreview();
+    inputs.dataForm.reset();
+    document.getElementById("Anomaly_Flag").value = "Normal"; // Reset anomaly flag
+  });
+
+  // Bulk Paste Add
+  actionButtons.bulkAddBtn.addEventListener("click", () => {
+    const bulkText = inputs.bulkInput.value.trim();
+    if (!bulkText) {
+      alert("Please paste CSV rows in the textarea.");
+      return;
+    }
+
+    const newRows = [];
+    const lines = bulkText.split("\n").map(line => line.trim()).filter(Boolean);
+
+    // Ensure header exists
+    if (csvLines.length === 0) {
+      csvLines.push(csvHeader.join(","));
+    }
+
+    const locationIdx = csvHeader.indexOf("Location");
+    if (locationIdx === -1) {
+        alert("Cannot process bulk paste: 'Location' column not found in header.");
+        return;
+    }
+
+    for (const line of lines) {
+      const parts = Papa.parse(line, { header: false }).data[0];
+      if (parts.length !== csvHeader.length) {
+        alert(`Warning: Skipped a row due to column count mismatch. Expected ${csvHeader.length}, got ${parts.length}: "${line.substring(0, 50)}..."`);
+        continue;
+      }
+      const location = parts[locationIdx]?.trim();
+      if (location && !(location in regions)) {
+        regions[location] = { lat: 0, long: 0 };
+      }
+      newRows.push(line);
+    }
+    csvLines.push(...newRows);
+    renderRegionsTable();
+    updatePreview();
+    inputs.bulkInput.value = "";
+    alert(`${newRows.length} rows added successfully.`);
+  });
+
+
+  // Generate Demo Data
+  actionButtons.generateDemoBtn.addEventListener("click", () => {
+    // Ensure header is present for new data generation
+    if (csvLines.length === 0) {
+      csvLines.push(csvHeader.join(","));
+    }
+
+    const newRows = [];
+    const demoRegions = Object.keys(regions).length ? Object.keys(regions) : ["North Region", "South Region", "East Region", "West Region", "Central Region"];
+
+    // Add demo regions to 'regions' if they don't exist
+    demoRegions.forEach(r => {
+        if (!(r in regions)) regions[r] = { lat: 0, long: 0 }; // Default coords
+    });
+
+    for (let i = 0; i < 10; i++) {
+      const deviceId = `DWLR_${String(Math.floor(Math.random() * 900) + 100).padStart(3, "0")}`; // Random 3-digit device ID
+      const location = demoRegions[i % demoRegions.length];
+      const ts = new Date(Date.now() - Math.random() * 30 * 24 * 3600000); // Last 30 days
+      const formattedTS = formatTimestamp(ts.toISOString());
+      const waterLevel = (10 + Math.random() * 20).toFixed(2); // 10-30m
+      const battery = (20 + Math.random() * 80).toFixed(0); // 20-100%
+      const signal = Math.random() > 0.15 ? "Online" : "Offline"; // 15% chance of offline
+      let anomaly = "Normal";
+      if (parseInt(battery) < 25) anomaly = "Low Battery";
+      else if (signal === "Offline") anomaly = "Signal Offline";
+      // No water level spike/drop for demo as it requires history
+
+      // Construct row based on csvHeader order
+      const rowData = {
+          Device_ID: deviceId,
+          Location: location,
+          Timestamp: formattedTS,
+          Water_Level_m: waterLevel,
+          Battery_Level: battery,
+          Signal_Status: signal,
+          Anomaly_Flag: anomaly,
+          Location_Latitude: regions[location]?.lat || 0,
+          Location_Longitude: regions[location]?.long || 0,
+      };
+
+      const lineValues = csvHeader.map(h => rowData[h] !== undefined ? rowData[h] : '');
+      newRows.push(lineValues.join(","));
+    }
+    csvLines.push(...newRows);
+    renderRegionsTable(); // Update regions table if new regions were added implicitly
+    updatePreview();
+    alert(`${newRows.length} demo rows generated!`);
+  });
+
+
+  // Add new region
+  inputs.regionForm.addEventListener("submit", e => {
+    e.preventDefault();
+    const name = inputs.regionName.value.trim();
+    const lat = parseFloat(inputs.regionLat.value);
+    const long = parseFloat(inputs.regionLong.value);
+
+    if (!name) {
+      alert("Region name cannot be empty.");
+      return;
+    }
+    if (isNaN(lat) || isNaN(long)) {
+      alert("Latitude and Longitude must be valid numbers.");
+      return;
+    }
+
+    if (name in regions) {
+      alert("Region already exists. Update it or use a different name.");
+      return;
+    }
+
+    regions[name] = { lat, long };
+    renderRegionsTable();
+
+    // Clear form
+    inputs.regionName.value = "";
+    inputs.regionLat.value = "";
+    inputs.regionLong.value = "";
+
+    alert(`Region "${name}" added!`);
+  });
+
+  // Remove region - event delegation on regionsBody
+  inputs.regionsBody.addEventListener("click", e => {
+    if (e.target.tagName === "BUTTON" && e.target.textContent.includes("❌")) {
+      const regionName = e.target.dataset.region;
+      if (!regionName) return;
+
+      // Custom confirmation dialog
+      const confirmRemoval = document.createElement('div');
+      confirmRemoval.style = `
+          position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+          background: var(--white-bg); padding: var(--spacing-md); border-radius: var(--border-radius);
+          box-shadow: 0 4px 12px rgba(0,0,0,0.2); z-index: 1000; text-align: center;
+          border: 1px solid var(--border-light);
+          color: var(--text-dark);
+      `;
+      confirmRemoval.innerHTML = `
+          <p style="margin-bottom: var(--spacing-md);">Are you sure you want to remove region "${regionName}"?<br>This will also remove all associated device entries from the current CSV data.</p>
+          <button id="confirmYes" style="background-color: var(--danger-color); color: white; padding: 8px 15px; border: none; border-radius: 5px; cursor: pointer; margin-right: 10px;">Yes</button>
+          <button id="confirmNo" style="background-color: var(--muted-color); color: white; padding: 8px 15px; border: none; border-radius: 5px; cursor: pointer;">No</button>
+      `;
+      document.body.appendChild(confirmRemoval);
+
+      document.getElementById('confirmYes').onclick = () => {
+          document.body.removeChild(confirmRemoval);
+          // Remove from regions object
+          delete regions[regionName];
+
+          // Remove device rows from CSV related to this region
+          const locationIdx = csvHeader.indexOf("Location");
+          if (locationIdx >= 0) {
+            // Filter out rows where the location matches the removed region
+            // Papa.parse is used to correctly handle commas within data fields
+            csvLines = csvLines.filter((line, idx) => {
+              if (idx === 0) return true; // Keep header
+              const parsedRow = Papa.parse(line, { header: false }).data[0];
+              return parsedRow[locationIdx]?.trim() !== regionName;
+            });
+          }
+
+          renderRegionsTable(); // Re-render regions table
+          updatePreview(); // Update CSV preview
+          alert(`Region "${regionName}" and related device data removed.`);
+      };
+
+      document.getElementById('confirmNo').onclick = () => {
+          document.body.removeChild(confirmRemoval);
+      };
+    }
+  });
+
+
+  // Download CSV as file
+  actionButtons.downloadBtn.addEventListener("click", () => {
+    if (csvLines.length <= 1) {
+      // Replaced alert with a more user-friendly message as per instructions
+      const messageBox = document.createElement('div');
+      messageBox.style = `
+          position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+          background: var(--white-bg); padding: var(--spacing-md); border-radius: var(--border-radius);
+          box-shadow: 0 4px 12px rgba(0,0,0,0.2); z-index: 1000; text-align: center;
+          border: 1px solid var(--border-light);
+          color: var(--text-dark);
+      `;
+      messageBox.innerHTML = `
+          <p style="margin-bottom: var(--spacing-md);">No CSV data to download. Please upload or add entries first.</p>
+          <button id="msgBoxOk" style="background-color: var(--primary-blue); color: white; padding: 8px 15px; border: none; border-radius: 5px; cursor: pointer;">OK</button>
+      `;
+      document.body.appendChild(messageBox);
+      document.getElementById('msgBoxOk').onclick = () => {
+          document.body.removeChild(messageBox);
+      };
+      return;
+    }
+
+    const blob = new Blob([csvLines.join("\n")], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "DWLR_Data_Edited.csv"; // Suggest a new name to avoid overwriting originals
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url); // Clean up the URL object
+  });
+
+
+  // --- Initialization ---
+
+  /**
+   * Initializes the Data Control Center:
+   * 1. Loads initial loc.csv for region management.
+   * 2. Sets up default view.
+   */
+  async function initializeDataControlCenter() {
+    try {
+      // Load loc.csv initially
+      const locResponse = await fetch('loc.csv');
+      const locText = await locResponse.text();
+      Papa.parse(locText, {
+        header: true,
+        dynamicTyping: true,
+        skipEmptyLines: true,
+        complete: function (results) {
+          allLocData = {}; // Clear previous data
+          results.data.forEach(row => {
+            if (row.Device_ID && row.Location_Name) {
+              allLocData[row.Device_ID] = {
+                Location_Name: row.Location_Name,
+                Location_Latitude: row.Location_Latitude,
+                Location_Longitude: row.Location_Longitude
+              };
+              // Also add unique locations to the 'regions' object if not already present
+              if (!(row.Location_Name in regions)) {
+                  regions[row.Location_Name] = {
+                      lat: parseFloat(row.Location_Latitude) || 0,
+                      long: parseFloat(row.Location_Longitude) || 0
+                  };
+              }
+            }
+          });
+          renderRegionsTable(); // Render initial regions based on loc.csv
+        }
+      });
+    } catch (error) {
+      console.error("Error loading loc.csv:", error);
+      alert("Failed to load initial location data.");
+    }
+
+    // Set initial section view
+    showSection("upload");
+    updateDownloadButtonState(); // Initial state for download button
+  }
+
+  // Run initialization when DOM is ready
+  document.addEventListener("DOMContentLoaded", initializeDataControlCenter);
+
+})();
+</script>
+</body>
+</html>

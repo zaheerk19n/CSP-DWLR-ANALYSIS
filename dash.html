@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>DWLR Dashboard | CGWB</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"/>
+  <link rel="stylesheet" href="dash.css" />
+
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+</head>
+<body data-theme="light">
+  <nav class="sidebar" aria-label="Sidebar Navigation">
+    <div class="sidebar-header">
+      <h1>DWLR <br> Dashboard</h1>
+    </div>
+    <ul class="sidebar-menu">
+      <li><a href="dash.html" aria-current="page">🏠 Home</a></li>
+      <li><a href="map.html">🗺️ Map View</a></li>
+      <li><a href="alerts.html">⚠️ Alerts</a></li>
+      <li><a href="datacontrolcenter.html">🖥️ Data Center</a></li>
+      <li><a href="notifi.html">🔔 Notifications</a></li>
+      <li><a href="assist.html">👨‍💻 Assistant</a></li>
+    </ul>
+  </nav>
+
+  <main class="main">
+    <header class="topbar">
+      <div class="topbar-left">
+        <form role="search" class="search-form">
+          <span class="search-icon">
+              <i class="fas fa-search"></i>
+            </span>
+          <input type="text" placeholder="Search by Device ID or Location..." class="search-input" aria-label="Search dashboard" id="searchInput" />
+        </form>
+      </div>
+      <div class="topbar-right">
+        <span id="clock" aria-label="Current time">🕓12:00 PM</span>
+        <button class="theme-toggle-btn" onclick="toggleDarkMode()" aria-label="Toggle Dark Mode" title="Switch Mode"><img src="images\day-and-night.png" alt="🌙" height="28"></button>
+        <a href="settings.html" class="settings-link" title="Settings"><img src="images\cogwheel.png" alt="⚙️" height="28"></a>
+        <div class="user-dropdown" tabindex="0" aria-haspopup="true" aria-expanded="false">
+          <span class="user-info"><img src="\images\profile1.png" alt="👤" height="28"><span class="username"></span></span>
+          <div class="dropdown-content" role="menu">
+            <a href="profile.html" role="menuitem">Profile</a>
+            <a href="logout.html" role="menuitem"><span style="color: #e03e3e;">Logout</span></a>
+
+          </div>
+        </div>
+      </div>
+    </header>
+    
+    <section class="filters-section" aria-label="Data Filters">
+      <div class="filter-group">
+        <label for="regionFilter">Filter by Region:</label>
+        <select id="regionFilter" aria-label="Filter data by region">
+          <option value="">All Regions</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <label for="locationFilter">Filter by Location:</label>
+        <select id="locationFilter" aria-label="Filter data by location">
+          <option value="">All Locations</option>
+        </select>
+      </div>
+    </section>
+
+    <section class="cards-section" aria-label="Device Metrics Summary">
+      <div class="card">
+        <h3>Total Devices</h3>
+        <p id="totalDevices">0</p>
+      </div>
+      <div class="card">
+        <h3>Offline Devices</h3>
+        <p id="offlineDevices" class="text-muted">0</p>
+      </div>
+      <div class="card progress-card">
+        <h3>Device Uptime %</h3>
+        <p id="deviceUptime" class="text-success">0%</p>
+        <progress id="deviceUptimeProgress" value="0" max="100" aria-label="Device Uptime Progress"></progress>
+      </div>
+      <div class="card progress-card">
+        <h3>Battery Health</h3>
+        <p id="batteryHealth">🔋 0%</p>
+        <progress id="batteryHealthProgress" value="0" max="100" aria-label="Battery Health Progress"></progress>
+      </div>
+      <div class="card">
+        <h3>Active Alerts</h3>
+        <p id="activeAlerts" class="text-danger">0</p>
+      </div>
+      <div class="card">
+      <h3>Avg. Water Level</h3>
+        <p id="avgWaterLevel">0 m</p>
+      </div>
+      <div class="card">
+        <h3>Max Water Level</h3>
+        <p id="maxWaterLevel">0 m</p>
+      </div>
+      <div class="card">
+        <h3>Min Water Level</h3>
+        <p id="minWaterLevel">0 m</p>
+      </div>
+    </section>
+
+    <section class="chart-section" id="level-trend">
+      <h2>Water Level Trend (Last 7 Days)</h2>
+      <canvas id="levelChart" aria-label="Water level line chart" role="img"></canvas>
+      <button class="download-btn" onclick="downloadChart('levelChart')">Download PNG</button>
+    </section>
+
+    <section class="chart-section donut-charts-container" id="donut-charts-container">
+      <div class="donut-chart-wrapper" style="background-color:antiquewhite;">
+        <h2>Device Status</h2>
+        <div class="chart-controls">
+          <label for="regionStatusSelect">Select Region:</label>
+          <select id="regionStatusSelect" aria-label="Select region for device status"></select>
+        </div>
+        <canvas id="csvDeviceStatusChart" aria-label="Device status chart" role="img"></canvas>
+        <button class="download-btn" onclick="downloadChart('csvDeviceStatusChart')">Download PNG</button>
+      </div>
+
+      <div class="donut-chart-wrapper" style="background-color:  rgb(223, 238, 243);">
+        <h2>Battery Level Distribution</h2>
+        <div class="chart-controls">
+          <label for="regionBatterySelect">Select Region:</label>
+          <select id="regionBatterySelect" aria-label="Select region for battery level distribution"></select>
+        </div>
+        <canvas id="batteryLevelChart" aria-label="Battery level chart" role="img"></canvas>
+        <button class="download-btn" onclick="downloadChart('batteryLevelChart')">Download PNG</button>
+      </div>
+    </section>
+
+    <section class="chart-section" id="anomaly-distribution-section">
+  <h2>Anomaly Flag Distribution</h2>
+  <canvas id="anomalyChart" aria-label="Anomaly Flag distribution chart" role="img"></canvas>
+  <button class="download-btn" onclick="downloadChart('anomalyChart')">Download PNG</button>
+</section>
+  </main>
+
+  <script src="dash.js"></script>
+</body>
+</html>

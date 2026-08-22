@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>DWLR Sites Map | CGWB</title>
+
+  <!-- Leaflet CSS for maps -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <!-- Font Awesome for icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"/>
+  <!-- Google Fonts - Inter -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet" />
+
+  <!-- Your custom dashboard CSS (contains shared styles for topbar, sidebar, and base variables) -->
+  <link rel="stylesheet" href="dash.css" />
+
+  <!-- PapaParse for CSV parsing -->
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+  <!-- Chart.js (included for consistency, not directly used by map logic) -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <style>
+    /*
+     * Custom styles for map.html
+     * These styles override or supplement dash.css for this specific page.
+     */
+
+    /* Ensure body and main take full height and manage overflow */
+    body {
+      display: flex; /* Flex container for sidebar and main content */
+      min-height: 100vh; /* Ensure body takes full viewport height */
+      overflow: hidden; /* Prevent overall page scrolling */
+      background-color: var(--light-grey-bg); /* Use dashboard background */
+      color: var(--text-dark);
+      transition: background-color var(--transition-speed), color var(--transition-speed);
+    }
+
+    .main {
+      flex-grow: 1;
+      padding: var(--spacing-md);
+      display: flex; /* Make main a flex container */
+      flex-direction: column; /* Stack children vertically */
+      overflow: hidden; /* Prevent scrolling within main, map will handle its own sizing */
+    }
+
+    .main h2 {
+      color: var(--primary-blue);
+      margin-top: 0;
+      margin-bottom: var(--spacing-sm); /* Reduced gap above map */
+      text-align: center;
+      font-size: var(--font-size-xl);
+    }
+
+    /* Map container styling */
+    #map {
+      flex-grow: 1; /* Allow map to take all available vertical space */
+      width: 100%;
+      border-radius: var(--border-radius);
+      box-shadow: 0 4px 12px var(--shadow-light);
+      /* margin-top: 0; Removed as flex-grow manages space and h2 margin provides separation */
+      min-height: 200px; /* Minimum height for map for responsiveness */
+    }
+
+    /* Styles for Leaflet marker popups */
+    .leaflet-popup-content-wrapper {
+      border-radius: var(--border-radius);
+      padding: var(--spacing-sm);
+      font-family: 'Inter', sans-serif;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    .leaflet-popup-content {
+      font-size: var(--font-size-sm);
+      color: var(--text-dark);
+    }
+    .leaflet-popup-content strong {
+      color: var(--primary-blue);
+      font-size: var(--font-size-md);
+    }
+    .user-dropdown {
+  position: relative;
+  display: inline-block;
+}
+
+.dropdown-content {
+  display: none; /* Hide by default */
+  flex-direction: row; /* Horizontal items */
+  gap: 12px;
+  background-color: #fff;
+  padding: 10px 12px;
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  position: absolute;
+  right: 0;
+  z-index: 1000;
+  white-space: nowrap;
+}
+
+/* Show dropdown on hover or focus */
+.user-dropdown:hover .dropdown-content,
+.user-dropdown:focus-within .dropdown-content {
+  display: flex;
+}
+
+
+    /* Status badges within popups */
+    .status-badge {
+      display: inline-block;
+      padding: 3px 8px;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: capitalize;
+      margin-left: 5px;
+    }
+    .status-normal { background-color: var(--success-color); color: #fff; }
+    .status-warning { background-color: var(--warning-color); color: #fff; }
+    .status-critical { background-color: var(--danger-color); color: #fff; }
+    .status-low-battery { background-color: var(--warning-color); color: #fff; } /* Orange */
+    .status-offline { background-color: var(--danger-color); color: #fff; } /* Red */
+    .status-drop, .status-spike { background-color: var(--info-color); color: #fff; } /* Info blue for data anomalies */
+    .status-no-data { background-color: var(--muted-color); color: #fff; } /* Muted grey */
+
+    /* Responsive adjustments from dash.css are effective here too */
+    @media (max-width: 768px) {
+        body {
+            flex-direction: column;
+        }
+        .main {
+            padding: var(--spacing-sm);
+        }
+        /* Adjust map height on smaller screens if necessary for better fit */
+        #map {
+          /* Smaller fixed height or further flex-based adjustment if needed */
+          min-height: 300px; /* Ensure map is visible even with short content */
+        }
+    }
+  </style>
+</head>
+<body data-theme="light">
+  <!-- Sidebar Navigation from dash.html -->
+  <nav class="sidebar" aria-label="Sidebar Navigation">
+    <div class="sidebar-header">
+      <h2>📍 DWLR Sites - Interactive Map</h2>
+    </div>
+    <ul class="sidebar-menu">
+      <li><a href="dash.html">🏠 Home</a></li>
+      <li><a href="map.html" aria-current="page">🗺️ Map View</a></li>
+      <!-- The alert badge will be red due to dash.css -->
+      <li><a href="alerts.html">⚠️ Alerts </a></li>
+      <li><a href="datacontrolcenter.html">🖥️ Data Center</a></li>
+      <li><a href="notifi.html">🔔 Notifications</a></li>
+      <li><a href="assist.html">👨‍💻 Assistant</a></li>
+    </ul>
+  </nav>
+
+  <main class="main">
+    <!-- Topbar from dash.html -->
+    <header class="topbar">
+      <div class="topbar-left">
+        <form role="search" class="search-form">
+          <span class="search-icon">
+              <i class="fas fa-search"></i>
+            </span>
+          <input type="text" placeholder="Search..." class="search-input" aria-label="Search dashboard" id="searchInput" />
+        </form>
+      </div>
+      <div class="topbar-right">
+        <span id="clock" aria-label="Current time">🕓12:00 PM</span>
+        <button class="theme-toggle-btn" onclick="toggleDarkMode()" aria-label="Toggle Dark Mode" title="Switch Mode"><img src="images/day-and-night.png" alt="🌙" height="28"></button>
+        <a href="settings.html" class="settings-link" title="Settings"><img src="images/cogwheel.png" alt="⚙️" height="28"></a>
+        <div class="user-dropdown" tabindex="0" aria-haspopup="true" aria-expanded="false">
+          <span class="user-info"><img src="images/profile1.png" alt="👤" height="28"><span class="username"></span></span>
+          <div class="dropdown-content" role="menu">
+            <a href="profile.html" role="menuitem">Profile</a>
+            <a href="logout.html" role="menuitem"><span style="color: #e03e3e;">Logout</span></a>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <div id="map"></div>
+  </main>
+
+  <!-- Leaflet JS -->
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+  <script>
+    // Global variables to store parsed CSV data
+    let allCSVRows = [];
+    let allLocData = [];
+    let mergedData = [];
+    let mapInstance; // To store the Leaflet map instance
+    let markersLayer = L.featureGroup(); // Layer group for markers
+
+    /**
+     * Initializes the clock display and updates it every second.
+     */
+    function updateClock() {
+      const clockElem = document.getElementById('clock');
+      if (clockElem) {
+        clockElem.textContent = new Date().toLocaleTimeString();
+      }
+    }
+
+    /**
+     * Toggles dark mode on or off.
+     */
+    function toggleDarkMode() {
+      document.body.classList.toggle('dark');
+    }
+
+    /**
+     * Loads both DWLR_Sample_Data_Full.csv and loc.csv, then merges them.
+     */
+    async function loadCSVData() {
+      try {
+        const [csvResponse, locResponse] = await Promise.all([
+          fetch('DWLR_Sample_Data_Full.csv'),
+          fetch('loc.csv')
+        ]);
+
+        const csvText = await csvResponse.text();
+        const locText = await locResponse.text();
+
+        Papa.parse(csvText, {
+          header: true,
+          dynamicTyping: true,
+          skipEmptyLines: true,
+          complete: function (results) {
+            allCSVRows = results.data;
+            mergeAndRenderMap(); // Attempt to merge and render after this parse
+          }
+        });
+
+        Papa.parse(locText, {
+          header: true,
+          dynamicTyping: true,
+          skipEmptyLines: true,
+          complete: function (results) {
+            allLocData = results.data;
+            mergeAndRenderMap(); // Attempt to merge and render after this parse
+          }
+        });
+      } catch (error) {
+        console.error('Error loading CSV files:', error);
+      }
+    }
+
+    /**
+     * Merges the two datasets if both are loaded and then renders the map markers.
+     */
+    function mergeAndRenderMap() {
+      if (allCSVRows.length === 0 || allLocData.length === 0) {
+        return; // Wait for both files to load
+      }
+
+      // Merge data: combine DWLR data with location names, longitude, latitude
+      // Ensure only valid rows from DWLR are processed and merged with corresponding location data
+      mergedData = allCSVRows
+        .filter(row => row.Device_ID && row.Timestamp) // Filter out rows with missing essential data
+        .map(row => {
+            const locationInfo = allLocData.find(loc => loc.Device_ID === row.Device_ID);
+            // Return augmented row, defaulting to 'Unknown' or null if location info is missing
+            return {
+                ...row,
+                Location_Name: locationInfo ? locationInfo.Location_Name : 'Unknown',
+                Location_Longitude: locationInfo ? locationInfo.Location_Longitude : null,
+                Location_Latitude: locationInfo ? locationInfo.Location_Latitude : null,
+            };
+        })
+        .filter(row => row.Location_Latitude !== null && row.Location_Longitude !== null); // Filter out rows without valid coordinates
+
+      renderMapMarkers(mergedData);
+    }
+
+    /**
+     * Gets the most recent status for a given Device_ID.
+     * This function is now more robust by parsing timestamps correctly for comparison.
+     * @param {string} deviceId - The ID of the device.
+     * @param {Array<Object>} dataRows - The dataset to search in.
+     * @returns {Object|null} The most recent data row for the device, or null if not found.
+     */
+    function getLatestDeviceData(deviceId, dataRows) {
+        const parseTimestamp = (ts) => {
+            if (!ts) return new Date(0); // Return a very old date for missing timestamps
+            const [datePart, timePart] = ts.split(' ');
+            const [day, month, year] = datePart.split('-');
+            return new Date(`${year}-${month}-${day}T${timePart}:00`); // ISO format for reliable parsing
+        };
+
+        const deviceReadings = dataRows
+            .filter(row => row.Device_ID === deviceId && row.Timestamp)
+            .sort((a, b) => parseTimestamp(b.Timestamp).getTime() - parseTimestamp(a.Timestamp).getTime()); // Sort descending
+
+        return deviceReadings.length > 0 ? deviceReadings[0] : null;
+    }
+
+    /**
+     * Determines marker color based on device status and anomaly flags.
+     * @param {string} signalStatus - The signal status (e.g., 'Online', 'Offline').
+     * @param {string} anomalyFlag - The anomaly flag (e.g., 'Normal', 'Low Battery', 'Drop').
+     * @returns {string} The hex color code for the marker.
+     */
+    function getMarkerColor(signalStatus, anomalyFlag) {
+      const lowerSignal = signalStatus ? signalStatus.toLowerCase() : '';
+      const lowerAnomaly = anomalyFlag ? anomalyFlag.toLowerCase() : '';
+
+      if (lowerSignal === 'offline') return '#e74c3c'; // Red for offline
+      if (lowerAnomaly.includes('low battery')) return '#f39c12'; // Orange for low battery
+      if (lowerAnomaly.includes('critical')) return '#e74c3c'; // Red for critical
+      if (lowerAnomaly.includes('warning')) return '#f39c12'; // Orange for general warning
+      if (lowerAnomaly.includes('drop') || lowerAnomaly.includes('spike')) return '#3498db'; // Info blue for data anomalies
+      if (lowerAnomaly.includes('normal')) return '#2ecc71'; // Green for normal
+      return '#808080'; // Default grey for unknown or no specific status
+    }
+
+
+    /**
+     * Renders markers on the Leaflet map based on the provided data.
+     * @param {Array<Object>} data - The merged and filtered data rows.
+     */
+    function renderMapMarkers(data) {
+      // Initialize the map if it hasn't been yet
+      if (!mapInstance) {
+        mapInstance = L.map('map').setView([23.5937, 80.9629], 5); // Centered over India
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(mapInstance);
+        markersLayer.addTo(mapInstance); // Add the feature group to the map
+      } else {
+        markersLayer.clearLayers(); // Clear existing markers if map already exists
+      }
+
+      // Group data by Device_ID and get the latest reading for each unique device
+      const latestDeviceData = new Map(); // Using Map to preserve insertion order if needed, or just for clarity
+      data.forEach(row => {
+          const deviceId = row.Device_ID;
+          if (deviceId && row.Location_Latitude !== null && row.Location_Longitude !== null) {
+              const existingLatest = latestDeviceData.get(deviceId);
+              if (!existingLatest || (row.Timestamp && getLatestDeviceData(deviceId, [row])?.Timestamp > getLatestDeviceData(deviceId, [existingLatest])?.Timestamp)) {
+                  latestDeviceData.set(deviceId, row);
+              }
+          }
+      });
+
+      // Add markers for each unique device based on its latest data
+      latestDeviceData.forEach(device => {
+        const lat = device.Location_Latitude;
+        const lon = device.Location_Longitude;
+        const deviceName = device.Location_Name || 'Unknown Location';
+        const deviceId = device.Device_ID || 'N/A';
+        const waterLevel = typeof device.Water_Level_m === 'number' ? `${device.Water_Level_m.toFixed(2)} m` : 'No Data';
+        const batteryLevel = typeof device.Battery_Level === 'number' ? `${device.Battery_Level}%` : 'N/A';
+        const signalStatus = device.Signal_Status || 'Unknown';
+        const anomalyFlag = device.Anomaly_Flag || 'Normal';
+
+        const markerColor = getMarkerColor(signalStatus, anomalyFlag);
+
+        const marker = L.circleMarker([lat, lon], {
+          radius: 8,
+          fillColor: markerColor,
+          color: '#000', // Border color
+          weight: 1,
+          opacity: 1,
+          fillOpacity: 0.85
+        });
+
+        // Create rich HTML content for the popup
+        const popupContent = `
+          <strong>${deviceName} (${deviceId})</strong><br>
+          Water Level: ${waterLevel}<br>
+          Battery: ${batteryLevel}<br>
+          Signal: <span class="status-badge status-${signalStatus.toLowerCase().replace(/\s/g, '-')}">${signalStatus}</span><br>
+          Anomaly: <span class="status-badge status-${anomalyFlag.toLowerCase().replace(/\s/g, '-')}">${anomalyFlag}</span>
+        `;
+        marker.bindPopup(popupContent);
+        markersLayer.addLayer(marker);
+      });
+
+      // Adjust map view to fit all markers, or reset to default if no markers
+      if (markersLayer.getLayers().length > 0) {
+          mapInstance.fitBounds(markersLayer.getBounds(), { padding: [50, 50] });
+      } else {
+          mapInstance.setView([23.5937, 80.9629], 5); // Default view over India
+      }
+    }
+
+    // Event listener for the search input on the map page
+    document.getElementById('searchInput').addEventListener('input', (event) => {
+        const searchTerm = event.target.value.toLowerCase();
+        let filteredMarkersData = mergedData;
+
+        if (searchTerm) {
+            filteredMarkersData = mergedData.filter(d =>
+                (d.Device_ID && String(d.Device_ID).toLowerCase().includes(searchTerm)) ||
+                (d.Location_Name && String(d.Location_Name).toLowerCase().includes(searchTerm))
+            );
+        }
+        renderMapMarkers(filteredMarkersData); // Re-render markers based on search
+    });
+
+    // Initialize clock and load data when the DOM is fully loaded
+    document.addEventListener('DOMContentLoaded', () => {
+      updateClock();
+      setInterval(updateClock, 1000); // Update clock every second
+      loadCSVData(); // Start loading CSV data and rendering map
+    });
+  </script>
+</body>
+</html>

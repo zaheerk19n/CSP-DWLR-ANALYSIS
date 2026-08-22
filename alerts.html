@@ -1,0 +1,671 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>DWLR Anomaly Detector | CGWB</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <!-- Google Fonts - Inter -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet" />
+  <!-- Font Awesome for icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"/>
+  <!-- Your custom dashboard CSS -->
+  <link rel="stylesheet" href="dash.css" />
+
+  <!-- Chart.js for charts -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- PapaParse for CSV parsing -->
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+
+  <style>
+    /*
+     * Custom styles for alerts.html
+     * These styles complement dash.css.
+     */
+    body {
+      display: flex; /* Make body a flex container for sidebar and main */
+      min-height: 100vh; /* Ensure body takes full viewport height */
+      /* REMOVED: overflow: hidden; -- This was preventing scrolling */
+      background-color: var(--light-grey-bg); /* Use dashboard background */
+      color: var(--text-dark);
+      font-family: 'Inter', sans-serif; /* Consistent font */
+      transition: background-color var(--transition-speed), color var(--transition-speed);
+    }
+
+    .main {
+      flex-grow: 1;
+      padding: var(--spacing-md);
+      display: flex; /* Make main a flex container */
+      flex-direction: column; /* Stack children vertically */
+      overflow-y: auto; /* Allow scrolling within the main content area if needed */
+    }
+
+    .alerts-container {
+      max-width: 1200px; /* Wider container for better chart display */
+      width: 100%;
+      margin: var(--spacing-md) auto; /* Center the container */
+      background-color: var(--white-bg);
+      padding: var(--spacing-md);
+      border-radius: var(--border-radius);
+      box-shadow: 0 2px 12px var(--shadow-light);
+      /* REMOVED: flex-grow: 1; -- Let content dictate height to enable main overflow */
+      display: flex;
+      flex-direction: column;
+    }
+
+    .alerts-container h1 {
+      color: var(--primary-blue);
+      text-align: center;
+      margin-bottom: var(--spacing-md);
+      font-size: var(--font-size-xl);
+    }
+
+    .file-upload-section {
+      margin-bottom: var(--spacing-md);
+      padding: var(--spacing-sm);
+      border: 1px dashed var(--border-light);
+      border-radius: var(--border-radius);
+      text-align: center;
+      background-color: var(--light-grey-bg);
+    }
+
+    .file-upload-section label {
+      display: block;
+      margin-bottom: var(--spacing-xs);
+      font-weight: 600;
+    }
+
+    input[type="file"] {
+      padding: 10px;
+      border: 1px solid var(--border-light);
+      border-radius: var(--border-radius);
+      background-color: var(--white-bg);
+      cursor: pointer;
+      width: fit-content;
+      margin: 0 auto;
+    }
+
+    input[type="file"]::-webkit-file-upload-button {
+      background-color: var(--primary-blue);
+      color: white;
+      padding: 8px 15px;
+      border: none;
+      border-radius: var(--border-radius);
+      cursor: pointer;
+      margin-right: 10px;
+      transition: background-color var(--transition-speed);
+    }
+
+    input[type="file"]::-webkit-file-upload-button:hover {
+      background-color: var(--dark-navy);
+    }
+
+    .chart-and-output {
+      display: flex;
+      flex-direction: column; /* Stack chart and output vertically */
+      gap: var(--spacing-md);
+      flex-grow: 1; /* Allow this section to grow, pushing content if necessary */
+    }
+
+    #tripleBarChart {
+      width: 100% !important;
+      max-height: 400px; /* Limit chart height */
+      margin-top: var(--spacing-md);
+    }
+
+    .chart-controls {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: var(--spacing-md);
+      margin-bottom: var(--spacing-md);
+    }
+
+    .chart-controls label {
+      font-weight: 600;
+      color: var(--text-dark);
+    }
+
+    .chart-controls select {
+      padding: 8px 12px;
+      border: 1px solid var(--border-light);
+      border-radius: var(--border-radius);
+      background-color: var(--light-grey-bg);
+      color: var(--text-dark);
+      font-size: var(--font-size-md);
+      cursor: pointer;
+      appearance: none;
+      -webkit-appearance: none;
+      -moz-appearance: none;
+      background-image: url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20256%20448%22%20enable-background%3D%22new%200%200%20256%20448%22%3E%3Cpath%20fill%3D%22%237f8c8d%22%20d%3D%22M207%20385.5L128%20306.5l-79%2079%20-30-30%20109-109%20109%20109z%22%2F%3E%3C%2Fsvg%3E');
+      background-repeat: no-repeat;
+      background-position: right 8px center;
+      background-size: 10px;
+    }
+
+    #output {
+      background: var(--light-grey-bg);
+      padding: var(--spacing-md);
+      border-radius: var(--border-radius);
+      white-space: pre-wrap; /* Preserve whitespace and line breaks */
+      overflow-x: auto; /* Allow horizontal scrolling for long lines */
+      font-family: monospace;
+      font-size: var(--font-size-sm);
+      /* Keeping min-height, but removed max-height to allow vertical expansion */
+      min-height: 100px;
+      border: 1px solid var(--border-light);
+      color: var(--text-dark);
+    }
+
+    .success {
+      color: var(--success-color);
+      font-weight: bold;
+    }
+
+    .anomaly-item {
+      margin-bottom: 5px;
+      padding: 5px;
+      border-bottom: 1px solid var(--border-light);
+    }
+    .anomaly-item:last-child {
+      border-bottom: none;
+    }
+
+    .anomaly-item strong {
+      color: var(--danger-color);
+    }
+
+    /* Responsive Design for Alerts Page */
+    @media (max-width: 768px) {
+      .alerts-container {
+        padding: var(--spacing-sm);
+        margin: var(--spacing-sm) auto;
+      }
+
+      .chart-controls {
+        flex-direction: column;
+        gap: var(--spacing-sm);
+      }
+
+      .file-upload-section {
+        padding: var(--spacing-sm);
+      }
+
+      input[type="file"] {
+        width: 100%;
+      }
+
+      /* Re-add max-height with internal scrolling for output on smaller screens if desired */
+      #output {
+        max-height: 150px; /* Constrain height on small screens */
+        overflow-y: auto; /* Enable internal scrolling for output if it exceeds 150px */
+      }
+    }
+  </style>
+</head>
+<body data-theme="light">
+  <!-- Sidebar Navigation from dash.html -->
+  <nav class="sidebar" aria-label="Sidebar Navigation">
+    <div class="sidebar-header">
+      <h1>DWLR <br> Dashboard</h1>
+    </div>
+    <ul class="sidebar-menu">
+      <li><a href="dash.html">🏠 Home</a></li>
+      <li><a href="map.html">🗺️ Map View</a></li>
+      <li><a href="alerts.html" aria-current="page">⚠️ Alerts</a></li>
+      <li><a href="datacontrolcenter.html">🖥️ Data Center</a></li>
+      <li><a href="notifi.html">🔔 Notifications</a></li>
+      <li><a href="assist.html">👨‍💻 Assistant</a></li>
+    </ul>
+  </nav>
+
+  <main class="main">
+    <!-- Topbar from dash.html -->
+    <header class="topbar">
+      <div class="topbar-left">
+        <form role="search" class="search-form">
+          <span class="search-icon">
+              <i class="fas fa-search"></i>
+            </span>
+          <input type="text" placeholder="Search..." class="search-input" aria-label="Search dashboard" id="searchInput" />
+        </form>
+      </div>
+      <div class="topbar-right">
+        <span id="clock" aria-label="Current time">🕓12:00 PM</span>
+        <button class="theme-toggle-btn" onclick="toggleDarkMode()" aria-label="Toggle Dark Mode" title="Switch Mode"><img src="images/day-and-night.png" alt="🌙" height="28"></button>
+        <a href="settings.html" class="settings-link" title="Settings"><img src="images/cogwheel.png" alt="⚙️" height="28"></a>
+        <div class="user-dropdown" tabindex="0" aria-haspopup="true" aria-expanded="false">
+          <span class="user-info"><img src="images/profile1.png" alt="👤" height="28"><span class="username"></span></span>
+          <div class="dropdown-content" role="menu">
+            <a href="profile.html" role="menuitem">Profile</a>
+            <a href="logout.html" role="menuitem"><span style="color: #e03e3e;">Logout</span></a>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <div class="alerts-container">
+      <h1>📊 DWLR Anomaly Detector</h1>
+      <p>This tool helps you detect anomalies in DWLR data. Upload your CSV file or view insights from the pre-loaded data.</p>
+
+      <div class="file-upload-section">
+        <label for="csvFileInput">Upload a new DWLR CSV file:</label>
+        <input type="file" id="csvFileInput" accept=".csv" />
+      </div>
+
+      <div class="chart-controls">
+        <label for="regionFilter">Filter by Region:</label>
+        <select id="regionFilter" aria-label="Filter alerts by region">
+          <option value="">All Regions</option>
+        </select>
+      </div>
+
+      <div class="chart-and-output">
+        <canvas id="tripleBarChart" height="150"></canvas>
+        <div id="output">Awaiting data...</div>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    // Global variables to store data
+    let allCSVRows = [];
+    let allLocData = [];
+    let mergedData = []; // Will store the combined data from both CSVs
+    let chartInstance = null; // Chart.js instance for the bar chart
+
+    // Get the computed value of --text-dark from the body for Chart.js
+    // This needs to be fetched after the CSS is loaded
+    let computedTextColor;
+
+    /**
+     * Initializes the clock display and updates it every second.
+     */
+    function updateClock() {
+      const clockElem = document.getElementById('clock');
+      if (clockElem) {
+        clockElem.textContent = new Date().toLocaleTimeString();
+      }
+    }
+
+    /**
+     * Toggles dark mode on or off.
+     */
+    function toggleDarkMode() {
+      document.body.classList.toggle('dark');
+      // Re-fetch computed color after theme toggle
+      computedTextColor = getComputedStyle(document.body).getPropertyValue('--text-dark').trim();
+      // Re-render chart to apply new text color, using the current filtered data
+      const selectedRegion = document.getElementById('regionFilter').value;
+      let filteredData = mergedData;
+      if (selectedRegion) {
+        filteredData = mergedData.filter(row => row.Location === selectedRegion);
+      }
+      // Re-process and display anomalies to update chart with new colors
+      processAndDisplayAnomalies(filteredData);
+    }
+
+    /**
+     * Handles manual CSV file upload.
+     * Parses the uploaded file and triggers anomaly detection and chart plotting.
+     * @param {Event} event - The change event from the file input.
+     */
+    document.getElementById("csvFileInput").addEventListener("change", handleFileUpload);
+
+    async function handleFileUpload(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = async function (e) {
+        const text = e.target.result;
+        Papa.parse(text, {
+          header: true,
+          dynamicTyping: true,
+          skipEmptyLines: true,
+          complete: function (results) {
+            const uploadedRows = results.data;
+            // Merge uploaded data with location data for context
+            const mergedUploadedData = uploadedRows.map(row => {
+              const locationInfo = allLocData.find(loc => loc.Device_ID === row.Device_ID);
+              return {
+                ...row,
+                Location_Name: locationInfo ? locationInfo.Location_Name : 'Unknown',
+                Location_Longitude: locationInfo ? locationInfo.Location_Longitude : null,
+                Location_Latitude: locationInfo ? locationInfo.Location_Latitude : null,
+              };
+            });
+            processAndDisplayAnomalies(mergedUploadedData);
+          }
+        });
+      };
+      reader.readAsText(file);
+    }
+
+    /**
+     * Loads the initial CSV files (DWLR_Sample_Data_Full.csv and loc.csv).
+     */
+    async function loadInitialCSVs() {
+      try {
+        const [csvResponse, locResponse] = await Promise.all([
+          fetch('DWLR_Sample_Data_Full.csv'),
+          fetch('loc.csv')
+        ]);
+
+        const csvText = await csvResponse.text();
+        const locText = await locResponse.text();
+
+        Papa.parse(csvText, {
+          header: true,
+          dynamicTyping: true,
+          skipEmptyLines: true,
+          complete: function (results) {
+            allCSVRows = results.data;
+            mergeDataAndProcess();
+          }
+        });
+
+        Papa.parse(locText, {
+          header: true,
+          dynamicTyping: true,
+          skipEmptyLines: true,
+          complete: function (results) {
+            allLocData = results.data;
+            mergeDataAndProcess();
+          }
+        });
+
+      } catch (error) {
+        console.error('Error loading initial CSV files:', error);
+        document.getElementById('output').innerHTML = '<strong style="color:red;">Error loading data. Please check console.</strong>';
+      }
+    }
+
+    /**
+     * Merges DWLR data with location data once both are available.
+     * Then triggers initial anomaly detection and UI updates.
+     */
+    function mergeDataAndProcess() {
+      if (allCSVRows.length > 0 && allLocData.length > 0) {
+        mergedData = allCSVRows.map(row => {
+          const locationInfo = allLocData.find(loc => loc.Device_ID === row.Device_ID);
+          return {
+            ...row,
+            Location_Name: locationInfo ? locationInfo.Location_Name : 'Unknown',
+            Location_Longitude: locationInfo ? locationInfo.Location_Longitude : null,
+            Location_Latitude: locationInfo ? locationInfo.Location_Latitude : null,
+          };
+        });
+        populateRegionFilter();
+        processAndDisplayAnomalies(mergedData);
+      }
+    }
+
+    /**
+     * Populates the region filter dropdown with unique regions from merged data.
+     */
+    function populateRegionFilter() {
+      const regionFilter = document.getElementById('regionFilter');
+      const uniqueRegions = [...new Set(mergedData.map(row => row.Location))].filter(Boolean).sort();
+
+      regionFilter.innerHTML = '<option value="">All Regions</option>'; // Add 'All Regions' option
+      uniqueRegions.forEach(region => {
+        const option = document.createElement('option');
+        option.value = region;
+        option.textContent = region;
+        regionFilter.appendChild(option);
+      });
+
+      regionFilter.addEventListener('change', applyRegionFilter);
+    }
+
+    /**
+     * Filters anomalies based on the selected region and updates the display.
+     */
+    function applyRegionFilter() {
+      const selectedRegion = document.getElementById('regionFilter').value;
+      let filteredData = mergedData; // Start with the full merged data
+
+      if (selectedRegion) {
+        filteredData = mergedData.filter(row => row.Location === selectedRegion);
+      }
+      processAndDisplayAnomalies(filteredData);
+    }
+
+    /**
+     * Detects anomalies in the given data.
+     * @param {Array<Object>} data - The data rows to analyze.
+     * @returns {Array<Object>} An array of detected anomalies.
+     */
+    function detectAnomalies(data) {
+      const anomalies = [];
+      const deviceWaterLevelHistory = {}; // To track water level for spike detection
+
+      data.forEach(entry => {
+        // Ensure essential fields exist and are of correct type
+        const deviceId = entry.Device_ID;
+        const timestamp = entry.Timestamp;
+        const waterLevel = parseFloat(entry.Water_Level_m);
+        const battery = parseInt(entry.Battery_Level);
+        const signalStatus = entry.Signal_Status ? entry.Signal_Status.toLowerCase().trim() : '';
+        const locationName = entry.Location_Name || 'N/A';
+
+        if (!deviceId || !timestamp) return; // Skip entries without basic info
+
+        const monthKey = timestamp.split("-")[2].split(" ")[0] + "-" + timestamp.split("-")[1]; // YYYY-MM
+
+        let detectedAnomalyType = null;
+
+        // Anomaly Detection Logic
+        if (battery < 20) {
+          detectedAnomalyType = "Low Battery";
+        } else if (signalStatus === "offline") {
+          detectedAnomalyType = "Signal Offline";
+        } else if (typeof waterLevel === 'number' && !isNaN(waterLevel)) {
+          if (!deviceWaterLevelHistory[deviceId]) {
+            deviceWaterLevelHistory[deviceId] = [];
+          } else {
+            const previousLevels = deviceWaterLevelHistory[deviceId];
+            // Consider only the latest known water level for simple spike detection
+            const lastKnownLevel = previousLevels[previousLevels.length - 1];
+
+            if (typeof lastKnownLevel === 'number' && !isNaN(lastKnownLevel)) {
+              const diff = Math.abs(lastKnownLevel - waterLevel);
+              // Define a threshold for a "spike" or "drop"
+              if (diff > 10) { // Example threshold: a change of more than 10 meters
+                detectedAnomalyType = "Water Level Spike/Drop";
+              }
+            }
+          }
+          deviceWaterLevelHistory[deviceId].push(waterLevel);
+        } else {
+            // Handle 'No Data' for Water_Level_m explicitly
+            if (entry.Water_Level_m === null || entry.Water_Level_m === undefined || entry.Water_Level_m === '') {
+                detectedAnomalyType = "Water Level No Data";
+            }
+        }
+
+
+        if (detectedAnomalyType) {
+          anomalies.push({
+            Device_ID: deviceId,
+            Location_Name: locationName,
+            Timestamp: timestamp,
+            Water_Level_m: entry.Water_Level_m, // Keep original value for display
+            Battery_Level: entry.Battery_Level,
+            Signal_Status: entry.Signal_Status,
+            Detected_Anomaly: detectedAnomalyType,
+            Month: monthKey
+          });
+        }
+      });
+      return anomalies;
+    }
+
+    /**
+     * Displays the detected anomalies in the output div.
+     * @param {Array<Object>} anomalies - An array of detected anomalies.
+     */
+    function displayResults(anomalies) {
+      const outputElem = document.getElementById("output");
+      outputElem.innerHTML = ''; // Clear previous output
+
+      if (anomalies.length === 0) {
+        outputElem.innerHTML = '<span class="success">✅ No anomalies detected in the filtered data.</span>';
+        return;
+      }
+
+      let resultHtml = `<h3>⚠️ <strong>${anomalies.length} Anomalies Detected</strong></h3><br>`;
+      anomalies.forEach(a => {
+        resultHtml += `
+          <div class="anomaly-item">
+            <strong>Device:</strong> ${a.Device_ID} (${a.Location_Name || 'N/A'})<br>
+            <strong>Time:</strong> ${a.Timestamp}<br>
+            <strong>Anomaly:</strong> <strong style="color: var(--danger-color);">${a.Detected_Anomaly}</strong><br>
+            Water Level: ${a.Water_Level_m !== null && a.Water_Level_m !== undefined ? a.Water_Level_m : 'N/A'}m | Battery: ${a.Battery_Level}% | Signal: ${a.Signal_Status}
+          </div>
+        `;
+      });
+
+      outputElem.innerHTML = resultHtml;
+    }
+
+    /**
+     * Plots the triple bar chart showing monthly alert distribution.
+     * @param {Array<Object>} anomalies - The anomalies to plot.
+     */
+    function plotTripleBarChart(anomalies) {
+      const months = [...new Set(anomalies.map(a => a.Month))].sort();
+
+      // Ensure all possible anomaly types are covered, including new ones
+      const anomalyTypes = ["Low Battery", "Signal Offline", "Water Level Spike/Drop", "Water Level No Data"];
+      const counts = {};
+
+      anomalyTypes.forEach(type => {
+        counts[type] = {};
+        months.forEach(month => {
+          counts[type][month] = 0;
+        });
+      });
+
+      anomalies.forEach(a => {
+        if (anomalyTypes.includes(a.Detected_Anomaly)) {
+          counts[a.Detected_Anomaly][a.Month]++;
+        }
+      });
+
+      const backgroundColors = {
+        "Low Battery": "rgba(255, 206, 86, 0.7)", // Warning color (Yellowish)
+        "Signal Offline": "rgba(231, 76, 60, 0.7)", // Danger color (Red)
+        "Water Level Spike/Drop": "rgba(52, 152, 219, 0.7)", // Info color (Blue)
+        "Water Level No Data": "rgba(189, 195, 199, 0.7)" // Muted color (Grey)
+      };
+
+      const datasets = anomalyTypes.map(type => ({
+        label: type,
+        data: months.map(m => counts[type][m]),
+        backgroundColor: backgroundColors[type] || "rgba(150, 150, 150, 0.7)", // Fallback color
+        borderRadius: 5
+      }));
+
+      if (chartInstance) chartInstance.destroy();
+
+      const ctx = document.getElementById("tripleBarChart").getContext("2d");
+      chartInstance = new Chart(ctx, {
+        type: "bar",
+        data: {
+          labels: months,
+          datasets: datasets
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false, // Allows flexible height
+          plugins: {
+            title: {
+              display: true,
+              text: "Monthly DWLR Alerts by Type",
+              font: {
+                size: 16,
+                weight: 'bold'
+              },
+              color: computedTextColor // Using computed value
+            },
+            legend: {
+              position: 'bottom',
+              labels: {
+                font: {
+                  size: 12
+                },
+                color: computedTextColor // Using computed value
+              }
+            },
+            tooltip: {
+                mode: 'index',
+                intersect: false,
+            }
+          },
+          scales: {
+            x: {
+              stacked: false, // Bars for different anomaly types are side-by-side
+              title: {
+                display: true,
+                text: "Month (YYYY-MM)",
+                font: {
+                  size: 14,
+                  weight: 'bold'
+                },
+                color: computedTextColor // Using computed value
+              },
+              ticks: {
+                color: computedTextColor // Using computed value
+              },
+              grid: {
+                  color: 'rgba(0, 0, 0, 0.05)'
+              }
+            },
+            y: {
+              beginAtZero: true,
+              title: {
+                display: true,
+                text: "Number of Alerts",
+                font: {
+                  size: 14,
+                  weight: 'bold'
+                },
+                color: computedTextColor // Using computed value
+              },
+              ticks: {
+                stepSize: 1, // Ensure integer ticks for counts
+                color: computedTextColor // Using computed value
+              },
+              grid: {
+                  color: 'rgba(0, 0, 0, 0.05)'
+              }
+            }
+          }
+        }
+      });
+    }
+
+    /**
+     * Orchestrates the anomaly detection and display based on provided data.
+     * @param {Array<Object>} dataToProcess - The data subset to analyze (e.g., all data or filtered data).
+     */
+    function processAndDisplayAnomalies(dataToProcess) {
+      const anomalies = detectAnomalies(dataToProcess);
+      displayResults(anomalies);
+      plotTripleBarChart(anomalies);
+    }
+
+    // Initialize clock and load initial CSV data when the DOM is fully loaded
+    document.addEventListener('DOMContentLoaded', () => {
+      // Fetch computedTextColor after DOM is loaded and CSS is parsed
+      computedTextColor = getComputedStyle(document.body).getPropertyValue('--text-dark').trim();
+
+      updateClock();
+      setInterval(updateClock, 1000); // Update clock every second
+      loadInitialCSVs(); // Load both CSV files on startup
+    });
+  </script>
+</body>
+</html>

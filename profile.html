@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Profile</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        /* Google Font Import */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+        /* CSS Variables */
+        :root {
+            --primary-color: #007bff;
+            --primary-hover-color: #0056b3;
+            --background-color: #f4f7f6;
+            --surface-color: #ffffff;
+            --border-color: #e0e0e0;
+            --text-color: #333;
+            --light-text-color: #666;
+            --shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+        }
+
+        /* Base Styles */
+        body {
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: var(--background-color);
+            color: var(--text-color);
+            display: flex;
+            justify-content: center;
+            align-items: flex-start; /* Align to top for longer content */
+            min-height: 100vh;
+            box-sizing: border-box;
+        }
+
+        /* Profile Container */
+        .profile-container {
+            background-color: var(--surface-color);
+            border-radius: 12px;
+            box-shadow: var(--shadow);
+            width: 100%;
+            max-width: 700px;
+            padding: 30px;
+            text-align: center;
+            margin-top: 20px; /* Space from top */
+        }
+
+        /* Profile Header */
+        .profile-header {
+            margin-bottom: 30px;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 20px;
+        }
+
+        .profile-pic {
+            width: 150px;
+            height: 150px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 4px solid var(--primary-color);
+            margin-bottom: 15px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .profile-header h1 {
+            font-size: 2.5em;
+            color: var(--primary-color);
+            margin: 10px 0 5px;
+        }
+
+        .profile-header .tagline {
+            font-size: 1.1em;
+            color: var(--light-text-color);
+            margin-top: 0;
+        }
+
+        /* Profile Details */
+        .profile-details {
+            text-align: left;
+            margin-bottom: 30px;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 20px;
+        }
+
+        .detail-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+            font-size: 1.1em;
+            color: var(--text-color);
+        }
+
+        .detail-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .detail-item .icon {
+            color: var(--primary-color);
+            margin-right: 15px;
+            font-size: 1.3em;
+            width: 25px; /* Fixed width for icon alignment */
+            text-align: center;
+        }
+
+        .detail-item span {
+            font-weight: 600;
+            margin-right: 8px;
+            color: var(--light-text-color);
+        }
+
+        /* Profile Bio */
+        .profile-bio {
+            text-align: left;
+            margin-bottom: 30px;
+        }
+
+        .profile-bio h2 {
+            font-size: 1.8em;
+            color: var(--primary-color);
+            margin-bottom: 15px;
+        }
+
+        .profile-bio p {
+            line-height: 1.6;
+            color: var(--text-color);
+            font-size: 1.05em;
+        }
+
+        /* Profile Actions */
+        .profile-actions button {
+            padding: 12px 25px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1.1em;
+            font-weight: 600;
+            transition: background-color 0.2s ease, transform 0.1s ease;
+            margin: 0 10px 15px; /* Margin for spacing buttons */
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .profile-actions button i {
+            font-size: 1.2em;
+        }
+
+        .edit-profile-btn {
+            background-color: var(--primary-color);
+            color: var(--surface-color);
+        }
+
+        .edit-profile-btn:hover {
+            background-color: var(--primary-hover-color);
+            transform: translateY(-1px);
+        }
+
+        .view-settings-btn {
+            background-color: #6c757d; /* Muted gray for settings */
+            color: var(--surface-color);
+        }
+
+        .view-settings-btn:hover {
+            background-color: #5a6268;
+            transform: translateY(-1px);
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .profile-container {
+                padding: 20px;
+                margin-top: 10px;
+            }
+
+            .profile-header h1 {
+                font-size: 2em;
+            }
+
+            .profile-pic {
+                width: 120px;
+                height: 120px;
+            }
+
+            .profile-details,
+            .profile-bio {
+                margin-bottom: 20px;
+            }
+
+            .detail-item {
+                font-size: 1em;
+                margin-bottom: 10px;
+            }
+
+            .profile-actions button {
+                width: calc(100% - 20px); /* Full width minus horizontal padding */
+                display: flex;
+                justify-content: center;
+                margin: 10px auto;
+                font-size: 1em;
+            }
+        }
+
+        @media (max-width: 480px) {
+            body {
+                padding: 10px;
+            }
+
+            .profile-container {
+                padding: 15px;
+            }
+
+            .profile-header h1 {
+                font-size: 1.8em;
+            }
+
+            .profile-pic {
+                width: 100px;
+                height: 100px;
+            }
+
+            .profile-actions button {
+                font-size: 0.95em;
+                padding: 10px 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="profile-container">
+        <div class="profile-header">
+            <img src="https://via.placeholder.com/150" alt="Profile Picture" class="profile-pic">
+            <h1>John Doe</h1>
+            <p class="tagline">Passionate Developer | Lifelong Learner</p>
+        </div>
+
+        <div class="profile-details">
+            <div class="detail-item">
+                <i class="fas fa-envelope icon"></i>
+                <span>Email:</span> john.doe@example.com
+            </div>
+            <div class="detail-item">
+                <i class="fas fa-user-alt icon"></i>
+                <span>Username:</span> johndoe
+            </div>
+            <div class="detail-item">
+                <i class="fas fa-map-marker-alt icon"></i>
+                <span>Location:</span> Hyderabad, Telangana, India
+            </div>
+            <div class="detail-item">
+                <i class="fas fa-briefcase icon"></i>
+                <span>Occupation:</span> Software Engineer
+            </div>
+            <div class="detail-item">
+                <i class="fas fa-calendar-alt icon"></i>
+                <span>Joined:</span> January 1, 2023
+            </div>
+        </div>
+
+        <div class="profile-bio">
+            <h2>About Me</h2>
+            <p>
+                Hello! I'm John Doe, a software engineer with a knack for building robust and scalable web applications. I love diving deep into new technologies and solving complex problems. When I'm not coding, you can find me exploring new places, reading sci-fi novels, or enjoying a good cup of coffee.
+            </p>
+        </div>
+
+        <div class="profile-actions">
+            <button class="edit-profile-btn"><i class="fas fa-edit"></i> Edit Profile</button>
+            <button class="view-settings-btn"><i class="fas fa-cog"></i> Go to Settings</button>
+            </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const editProfileBtn = document.querySelector('.edit-profile-btn');
+            const viewSettingsBtn = document.querySelector('.view-settings-btn');
+
+            editProfileBtn.addEventListener('click', () => {
+                alert('Edit Profile button clicked! (In a real app, this would open an edit form or redirect)');
+                // window.location.href = 'settings.html#profile-info-edit';
+            });
+
+            viewSettingsBtn.addEventListener('click', () => {
+                alert('Go to Settings button clicked! Redirecting to settings page...');
+                // In a real application, you would navigate to the settings page.
+                // window.location.href = 'settings.html';
+            });
+        });
+    </script>
+</body>
+</html>

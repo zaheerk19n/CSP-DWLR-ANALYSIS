@@ -1,0 +1,3 @@
+"timestamp","recipientType","recipient","message","priority"
+"2025-06-29T14:07:35.230Z","specific","DWLR_001","error at 001","low"
+"2025-06-29T14:09:00.249Z","specific","DWLR_007","error at 007","low"

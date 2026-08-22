@@ -1,0 +1,767 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Notifications | DWLR Dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <!-- Google Fonts - Inter -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet" />
+  <!-- Font Awesome for icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"/>
+  <!-- Your custom dashboard CSS -->
+  <link rel="stylesheet" href="dash.css" />
+
+  <!-- Chart.js for charts -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- PapaParse for CSV parsing -->
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+
+  <style>
+    /* Base layout consistent with dashboard */
+    body {
+      display: flex;
+      min-height: 100vh;
+      /* overflow: hidden; */ /* Removing this to allow main content scrolling */
+      background-color: var(--light-grey-bg);
+      color: var(--text-dark);
+      font-family: 'Inter', sans-serif;
+      transition: background-color var(--transition-speed), color var(--transition-speed);
+    }
+
+    .main {
+      flex-grow: 1;
+      padding: var(--spacing-md);
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto; /* Enable scrolling for the main content area */
+    }
+
+    .notifications-container {
+      max-width: 900px;
+      width: 100%;
+      margin: var(--spacing-md) auto;
+      background-color: var(--white-bg);
+      padding: var(--spacing-md);
+      border-radius: var(--border-radius);
+      box-shadow: 0 2px 12px var(--shadow-light);
+      display: flex;
+      flex-direction: column;
+      gap: var(--spacing-md);
+    }
+
+    h1 {
+      text-align: center;
+      margin-bottom: var(--spacing-md);
+      color: var(--primary-blue);
+      font-size: var(--font-size-xl);
+    }
+
+    .section-header {
+      font-size: var(--font-size-lg);
+      color: var(--primary-blue);
+      margin-bottom: var(--spacing-sm);
+      border-bottom: 1px solid var(--border-light);
+      padding-bottom: var(--spacing-xs);
+    }
+
+    /* Notification Sending Form */
+    .notification-form {
+      display: flex;
+      flex-direction: column;
+      gap: var(--spacing-sm);
+      margin-bottom: var(--spacing-md);
+    }
+
+    .notification-form label {
+      font-weight: 600;
+      color: var(--text-dark);
+    }
+
+    .notification-form input[type="text"],
+    .notification-form select,
+    .notification-form textarea {
+      padding: 10px;
+      border: 1px solid var(--border-light);
+      border-radius: var(--border-radius);
+      background-color: var(--light-grey-bg);
+      color: var(--text-dark);
+      font-size: var(--font-size-md);
+    }
+
+    .notification-form input:focus,
+    .notification-form select:focus,
+    .notification-form textarea:focus {
+      border-color: var(--primary-blue);
+      outline: none;
+      box-shadow: 0 0 0 2px rgba(0, 77, 153, 0.2);
+    }
+
+    .notification-form button {
+      background-color: var(--success-color);
+      color: white;
+      padding: 10px 20px;
+      border: none;
+      border-radius: var(--border-radius);
+      font-size: var(--font-size-md);
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+    }
+
+    .notification-form button:hover {
+      background-color: #218f51;
+    }
+
+    /* Notification Chart */
+    #notificationChart {
+      width: 100% !important;
+      max-height: 350px;
+    }
+
+    /* Message List */
+    .message-list {
+      background: var(--light-grey-bg);
+      border: 1px solid var(--border-light);
+      padding: var(--spacing-md);
+      border-radius: var(--border-radius);
+      max-height: 300px; /* Make the list scrollable if it gets too long */
+      overflow-y: auto;
+      font-size: var(--font-size-sm);
+      color: var(--text-dark);
+    }
+
+    .message-item {
+      padding: var(--spacing-xs) 0;
+      border-bottom: 1px dashed var(--border-light);
+    }
+
+    .message-item:last-child {
+      border-bottom: none;
+    }
+
+    .message-item .timestamp {
+      font-size: 0.75rem;
+      color: var(--text-light);
+      margin-top: 5px;
+      display: block;
+    }
+
+    .message-item .recipient {
+        font-weight: 600;
+        color: var(--info-color);
+    }
+    .message-item .priority-high {
+        color: var(--danger-color);
+        font-weight: bold;
+    }
+    .message-item .priority-medium {
+        color: var(--warning-color);
+    }
+    .message-item .priority-low {
+        color: var(--success-color);
+    }
+
+    .download-notifications-btn {
+        background-color: var(--primary-blue);
+        color: white;
+        padding: 10px 15px;
+        border: none;
+        border-radius: var(--border-radius);
+        font-size: var(--font-size-md);
+        cursor: pointer;
+        transition: background-color 0.3s ease;
+        margin-top: var(--spacing-md);
+        width: fit-content;
+        align-self: flex-end; /* Align to the right in flex container */
+    }
+
+    .download-notifications-btn:hover {
+        background-color: var(--dark-navy);
+    }
+    .download-notifications-btn:disabled {
+        background-color: var(--muted-color);
+        cursor: not-allowed;
+    }
+
+    /* Responsive Adjustments */
+    @media (max-width: 768px) {
+      .notifications-container {
+        padding: var(--spacing-sm);
+        margin: var(--spacing-sm) auto;
+      }
+      .notification-form button {
+        width: 100%;
+      }
+      .download-notifications-btn {
+        width: 100%;
+        align-self: center; /* Center on small screens */
+      }
+    }
+  </style>
+</head>
+<body data-theme="light">
+  <!-- Sidebar Navigation from dash.html -->
+  <nav class="sidebar" aria-label="Sidebar Navigation">
+    <div class="sidebar-header">
+      <h1>DWLR <br> Dashboard</h1>
+    </div>
+    <ul class="sidebar-menu">
+      <li><a href="index1.html">🏠 Home</a></li>
+      <li><a href="map.html">🗺️ Map View</a></li>
+      <li><a href="alerts.html">⚠️ Alerts</a></li>
+      <li><a href="datacontrolcenter.html">🖥️ Data Center</a></li>
+      <li><a href="notifications.html" aria-current="page">🔔 Notifications</a></li>
+      <li><a href="assist.html">👨‍💻 Assistant</a></li>
+    </ul>
+  </nav>
+
+  <main class="main">
+    <!-- Topbar from dash.html -->
+    <header class="topbar">
+      <div class="topbar-left">
+        <form role="search" class="search-form">
+          <span class="search-icon">
+              <i class="fas fa-search"></i>
+            </span>
+          <input type="text" placeholder="Search..." class="search-input" aria-label="Search dashboard" id="searchInput" list="device-ids"/>
+          <datalist id="device-ids"></datalist>
+        </form>
+      </div>
+      <div class="topbar-right">
+        <span id="clock" aria-label="Current time">🕓12:00 PM</span>
+        <button class="theme-toggle-btn" onclick="toggleDarkMode()" aria-label="Toggle Dark Mode" title="Switch Mode"><img src="images/day-and-night.png" alt="🌙" height="28"></button>
+        <a href="settings.html" class="settings-link" title="Settings"><img src="images/cogwheel.png" alt="⚙️" height="28"></a>
+        <div class="user-dropdown" tabindex="0" aria-haspopup="true" aria-expanded="false">
+          <span class="user-info"><img src="images/profile1.png" alt="👤" height="28"><span class="username"></span></span>
+          <div class="dropdown-content" role="menu">
+            <a href="profile.html" role="menuitem">Profile</a>
+            <a href="logout.html" role="menuitem"><span style="color: #e03e3e;">Logout</span></a>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <div class="notifications-container">
+      <h1>🔔 Notifications Center</h1>
+
+      <section class="notification-sending-section">
+        <h2 class="section-header">Send New Notification</h2>
+        <form id="notificationForm" class="notification-form">
+          <label for="recipientType">Send to:</label>
+          <select id="recipientType" required>
+            <option value="all">All Checkers</option>
+            <option value="specific">Specific Checker (via Device ID)</option>
+            <option value="region">Checkers in a Region</option>
+          </select>
+
+          <div id="specificRecipientField" style="display: none;">
+            <label for="specificDeviceId">Device ID:</label>
+            <input type="text" id="specificDeviceId" placeholder="Enter Device ID (e.g., DWLR_001)" list="device-id-suggestions">
+            <datalist id="device-id-suggestions"></datalist>
+          </div>
+
+          <div id="regionRecipientField" style="display: none;">
+            <label for="regionSelect">Region:</label>
+            <select id="regionSelect">
+              <!-- Regions will be populated dynamically -->
+              <option value="">Select Region</option>
+            </select>
+          </div>
+
+          <label for="notificationMessage">Message:</label>
+          <textarea id="notificationMessage" rows="4" placeholder="Enter your notification message here..." required></textarea>
+
+          <label for="notificationPriority">Priority:</label>
+          <select id="notificationPriority">
+            <option value="low">Low</option>
+            <option value="medium">Medium</option>
+            <option value="high">High</option>
+          </select>
+
+          <button type="submit">Send Notification</button>
+        </form>
+      </section>
+
+      <section class="notification-chart-section">
+        <h2 class="section-header">Notifications Trend (All Time)</h2>
+        <canvas id="notificationChart"></canvas>
+      </section>
+
+      <section class="sent-notifications-list-section">
+        <h2 class="section-header">Recently Sent Notifications</h2>
+        <div id="sentNotificationsList" class="message-list">
+          No notifications sent yet.
+        </div>
+        <button id="downloadNotificationsBtn" class="download-notifications-btn" disabled>
+            ⬇️ Download Sent Notifications
+        </button>
+      </section>
+
+    </div>
+  </main>
+
+  <script>
+    // Global variables
+    let allCSVRows = []; // To store data from DWLR_Sample_Data_Full.csv
+    let allLocData = []; // To store data from loc.csv
+    let mergedData = []; // Combined data from both CSVs
+    let notificationsLog = []; // Stores sent notifications for display and chart
+    let notificationChartInstance; // Chart.js instance for the notification chart
+
+    // Get the computed value of --text-dark from the body for Chart.js
+    let computedTextColor;
+
+    /**
+     * Initializes the clock display and updates it every second.
+     */
+    function updateClock() {
+      const clockElem = document.getElementById('clock');
+      if (clockElem) {
+        clockElem.textContent = new Date().toLocaleTimeString();
+      }
+    }
+
+    /**
+     * Toggles dark mode on or off.
+     */
+    function toggleDarkMode() {
+      document.body.classList.toggle('dark');
+      // Re-fetch computed color after theme toggle
+      computedTextColor = getComputedStyle(document.body).getPropertyValue('--text-dark').trim();
+      // Re-render chart to apply new text color
+      renderNotificationChart();
+    }
+
+    /**
+     * Loads DWLR_Sample_Data_Full.csv and loc.csv.
+     */
+    async function loadDWLRData() {
+      try {
+        const [csvResponse, locResponse] = await Promise.all([
+          fetch('DWLR_Sample_Data_Full.csv'),
+          fetch('loc.csv')
+        ]);
+
+        const csvText = await csvResponse.text();
+        const locText = await locResponse.text();
+
+        Papa.parse(csvText, {
+          header: true,
+          dynamicTyping: true,
+          skipEmptyLines: true,
+          complete: function (results) {
+            allCSVRows = results.data;
+            mergeDWLRDataAndPopulateDropdowns();
+          }
+        });
+
+        Papa.parse(locText, {
+          header: true,
+          dynamicTyping: true,
+          skipEmptyLines: true,
+          complete: function (results) {
+            allLocData = results.data;
+            mergeDWLRDataAndPopulateDropdowns();
+          }
+        });
+      } catch (error) {
+        console.error('Error loading DWLR CSV files:', error);
+      }
+    }
+
+    /**
+     * Merges DWLR data if both are loaded and populates UI dropdowns.
+     */
+    function mergeDWLRDataAndPopulateDropdowns() {
+      if (allCSVRows.length > 0 && allLocData.length > 0) {
+        mergedData = allCSVRows.map(row => {
+          const locationInfo = allLocData.find(loc => loc.Device_ID === row.Device_ID);
+          return {
+            ...row,
+            Location_Name: locationInfo ? locationInfo.Location_Name : 'Unknown',
+            Location_Longitude: locationInfo ? locationInfo.Location_Longitude : null,
+            Location_Latitude: locationInfo ? locationInfo.Location_Latitude : null,
+          };
+        }).filter(row => row.Location_Name); // Ensure a valid location name for filtering
+
+        populateRegionSelect();
+        populateDeviceIdSuggestions();
+        // The notification chart will be rendered by loadNotificationsData
+      }
+    }
+
+    /**
+     * Loads notification data from notifi.csv.
+     */
+    async function loadNotificationsData() {
+        try {
+            const response = await fetch('notifi.csv');
+            const csvText = await response.text();
+            Papa.parse(csvText, {
+                header: true,
+                dynamicTyping: true,
+                skipEmptyLines: true,
+                complete: function (results) {
+                    notificationsLog = results.data;
+                    displaySentNotifications();
+                    updateDownloadNotificationsButtonState();
+                    renderNotificationChart(); // Render chart based on notificationsLog
+                },
+                error: function(err) {
+                    console.warn("Error parsing notifi.csv, perhaps it's empty or malformed. Starting with empty log.", err);
+                    notificationsLog = []; // Initialize empty if parse fails
+                    displaySentNotifications();
+                    updateDownloadNotificationsButtonState();
+                    renderNotificationChart();
+                }
+            });
+        } catch (error) {
+            console.warn('notifi.csv not found or error loading it. Starting with empty notification log.', error);
+            notificationsLog = []; // Initialize empty if file not found
+            displaySentNotifications();
+            updateDownloadNotificationsButtonState();
+            renderNotificationChart();
+        }
+    }
+
+    /**
+     * Populates the region select dropdown for notification sending.
+     */
+    function populateRegionSelect() {
+      const regionSelect = document.getElementById('regionSelect');
+      // Use mergedData to get unique regions, as it contains Location_Name
+      const uniqueRegions = [...new Set(mergedData.map(row => row.Location_Name))].filter(Boolean).sort();
+
+      regionSelect.innerHTML = '<option value="">Select Region</option>';
+      uniqueRegions.forEach(region => {
+        const option = document.createElement('option');
+        option.value = region;
+        option.textContent = region;
+        regionSelect.appendChild(option);
+      });
+    }
+
+    /**
+     * Populates the datalist for device ID suggestions.
+     */
+    function populateDeviceIdSuggestions() {
+      const datalist = document.getElementById('device-id-suggestions');
+      const uniqueDeviceIds = [...new Set(mergedData.map(row => row.Device_ID))].filter(Boolean).sort();
+
+      datalist.innerHTML = ''; // Clear previous options
+      uniqueDeviceIds.forEach(deviceId => {
+        const option = document.createElement('option');
+        option.value = deviceId;
+        datalist.appendChild(option);
+      });
+    }
+
+    /**
+     * Handles the change event for recipient type dropdown.
+     * Shows/hides specific input fields based on selection.
+     */
+    document.getElementById('recipientType').addEventListener('change', (event) => {
+      const type = event.target.value;
+      document.getElementById('specificRecipientField').style.display = 'none';
+      document.getElementById('regionRecipientField').style.display = 'none';
+
+      if (type === 'specific') {
+        document.getElementById('specificRecipientField').style.display = 'block';
+      } else if (type === 'region') {
+        document.getElementById('regionRecipientField').style.display = 'block';
+      }
+    });
+
+    /**
+     * Handles the submission of the notification form.
+     * Simulates sending a notification and logs it.
+     */
+    document.getElementById('notificationForm').addEventListener('submit', (event) => {
+      event.preventDefault();
+
+      const recipientType = document.getElementById('recipientType').value;
+      let recipientIdentifier = '';
+      let isValidRecipient = true;
+
+      if (recipientType === 'specific') {
+        recipientIdentifier = document.getElementById('specificDeviceId').value.trim();
+        // Validate Device ID against merged data
+        if (!mergedData.some(row => row.Device_ID === recipientIdentifier)) {
+          isValidRecipient = false;
+          showCustomAlert('Invalid Device ID. Please select an existing device.', 'error');
+        }
+      } else if (recipientType === 'region') {
+        recipientIdentifier = document.getElementById('regionSelect').value;
+        // Validate Region against merged data
+        if (!mergedData.some(row => row.Location_Name === recipientIdentifier)) {
+          isValidRecipient = false;
+          showCustomAlert('Invalid Region. Please select an existing region.', 'error');
+        }
+      } else {
+        recipientIdentifier = 'All Checkers';
+      }
+
+      if (!isValidRecipient) {
+        return;
+      }
+
+      const message = document.getElementById('notificationMessage').value.trim();
+      if (!message) {
+        showCustomAlert('Notification message cannot be empty.', 'error');
+        return;
+      }
+      const priority = document.getElementById('notificationPriority').value;
+
+      const newNotification = {
+        timestamp: new Date().toISOString(),
+        recipientType: recipientType,
+        recipient: recipientIdentifier,
+        message: message,
+        priority: priority
+      };
+
+      notificationsLog.push(newNotification);
+      displaySentNotifications();
+      renderNotificationChart(); // Re-render chart based on updated notificationsLog
+      updateDownloadNotificationsButtonState(); // Update button state after adding notification
+
+      showCustomAlert('Notification sent (simulated)!', 'success');
+      // REMOVED: downloadNotificationsLog(); // Removed automatic download on send
+      
+      document.getElementById('notificationForm').reset(); // Clear form
+      // Hide specific/region fields after reset
+      document.getElementById('specificRecipientField').style.display = 'none';
+      document.getElementById('regionRecipientField').style.display = 'none';
+    });
+
+    /**
+     * Displays a custom alert/message box.
+     * @param {string} message - The message to display.
+     * @param {string} type - 'success' or 'error' to style the message.
+     */
+    function showCustomAlert(message, type) {
+      const messageBox = document.createElement('div');
+      messageBox.style = `
+          position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+          background: var(--white-bg); padding: var(--spacing-md); border-radius: var(--border-radius);
+          box-shadow: 0 4px 12px rgba(0,0,0,0.2); z-index: 1000; text-align: center;
+          border: 1px solid var(--border-light);
+          color: var(--text-dark);
+          max-width: 300px;
+          width: 90%;
+      `;
+      let title = '';
+      let buttonColor = 'var(--primary-blue)';
+      if (type === 'success') {
+          title = '<span style="color: var(--success-color); font-weight: bold;">Success!</span>';
+          buttonColor = 'var(--success-color)';
+      } else if (type === 'error') {
+          title = '<span style="color: var(--danger-color); font-weight: bold;">Error!</span>';
+          buttonColor = 'var(--danger-color)';
+      }
+
+      messageBox.innerHTML = `
+          <p style="margin-bottom: var(--spacing-sm); font-size: 1.1rem;">${title}</p>
+          <p style="margin-bottom: var(--spacing-md);">${message}</p>
+          <button id="msgBoxOk" style="background-color: ${buttonColor}; color: white; padding: 8px 15px; border: none; border-radius: 5px; cursor: pointer;">OK</button>
+      `;
+      document.body.appendChild(messageBox);
+      document.getElementById('msgBoxOk').onclick = () => {
+          document.body.removeChild(messageBox);
+      };
+    }
+
+
+    /**
+     * Displays the list of recently sent notifications (user-initiated).
+     */
+    function displaySentNotifications() {
+      const listElem = document.getElementById('sentNotificationsList');
+      if (notificationsLog.length === 0) {
+        listElem.innerHTML = 'No notifications sent yet.';
+        return;
+      }
+
+      // Sort by timestamp descending (most recent first)
+      const sortedLog = [...notificationsLog].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+      listElem.innerHTML = sortedLog.map(notif => {
+        const date = new Date(notif.timestamp);
+        const formattedTime = date.toLocaleString();
+        const priorityClass = `priority-${notif.priority}`; // e.g., 'priority-high'
+
+        return `
+          <div class="message-item">
+            <span class="recipient">To: ${notif.recipient}</span> <br>
+            <span class="${priorityClass}">Priority: ${notif.priority.charAt(0).toUpperCase() + notif.priority.slice(1)}</span>
+            <p>${notif.message}</p>
+            <span class="timestamp">${formattedTime}</span>
+          </div>
+        `;
+      }).join('');
+    }
+
+    /**
+     * Renders or updates the notification trend chart.
+     * This chart now shows the trend of *sent notifications* from the notificationsLog data.
+     */
+    function renderNotificationChart() {
+      if (notificationChartInstance) {
+        notificationChartInstance.destroy();
+      }
+
+      // Group notificationsLog by month for the chart
+      const notificationsByMonth = {};
+      notificationsLog.forEach(notif => {
+          const date = new Date(notif.timestamp);
+          if (!isNaN(date.getTime())) { // Check if date is valid
+              const monthYear = `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}`;
+              if (!notificationsByMonth[monthYear]) {
+                  notificationsByMonth[monthYear] = 0;
+              }
+              notificationsByMonth[monthYear]++;
+          }
+      });
+
+      const sortedMonths = Object.keys(notificationsByMonth).sort();
+      const chartData = sortedMonths.map(month => notificationsByMonth[month]);
+
+      const ctx = document.getElementById('notificationChart').getContext('2d');
+      notificationChartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: sortedMonths,
+          datasets: [{
+            label: 'Notifications Sent',
+            data: chartData,
+            backgroundColor: 'rgba(0, 77, 153, 0.7)', // Primary blue
+            borderColor: 'rgba(0, 77, 153, 1)',
+            borderWidth: 1,
+            borderRadius: 5
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              display: false
+            },
+            title: {
+              display: true,
+              text: 'Monthly Notifications Sent',
+              font: {
+                size: 16,
+                weight: 'bold'
+              },
+              color: computedTextColor
+            },
+            tooltip: {
+                mode: 'index',
+                intersect: false,
+            }
+          },
+          scales: {
+            x: {
+              title: {
+                display: true,
+                text: 'Month',
+                font: {
+                  size: 14,
+                  weight: 'bold'
+                },
+                color: computedTextColor
+              },
+              ticks: {
+                color: computedTextColor
+              },
+              grid: {
+                  color: 'rgba(0, 0, 0, 0.05)'
+              }
+            },
+            y: {
+              beginAtZero: true,
+              title: {
+                display: true,
+                text: 'Count of Notifications',
+                font: {
+                  size: 14,
+                  weight: 'bold'
+                },
+                color: computedTextColor
+              },
+              ticks: {
+                stepSize: 1,
+                color: computedTextColor
+              },
+              grid: {
+                  color: 'rgba(0, 0, 0, 0.05)'
+              }
+            }
+          }
+        }
+      });
+    }
+
+    /**
+     * Converts the notificationsLog array to CSV format and triggers a download.
+     */
+    function downloadNotificationsLog() {
+        if (notificationsLog.length === 0) {
+            showCustomAlert('No notifications to download.', 'error');
+            return;
+        }
+
+        const csvHeader = ["timestamp", "recipientType", "recipient", "message", "priority"];
+        const csvRows = Papa.unparse(notificationsLog, {
+            header: true,
+            columns: csvHeader,
+            quotes: true // Ensure fields with commas are quoted
+        });
+
+        const blob = new Blob([csvRows], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'notifi.csv'; // Explicitly naming it notifi.csv
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        showCustomAlert('Notifications log downloaded successfully! Please manually replace your existing notifi.csv with this new file.', 'success');
+    }
+
+    /**
+     * Updates the disabled state of the download notifications button.
+     */
+    function updateDownloadNotificationsButtonState() {
+        const downloadBtn = document.getElementById('downloadNotificationsBtn');
+        if (downloadBtn) {
+            downloadBtn.disabled = notificationsLog.length === 0;
+        }
+    }
+
+
+    // Add event listener for the new download button
+    document.addEventListener('DOMContentLoaded', () => {
+        const downloadBtn = document.getElementById('downloadNotificationsBtn');
+        if (downloadBtn) {
+            downloadBtn.addEventListener('click', downloadNotificationsLog);
+        }
+    });
+
+    // Initialize on DOMContentLoaded
+    document.addEventListener('DOMContentLoaded', () => {
+      // Fetch computedTextColor after DOM is loaded and CSS is parsed
+      computedTextColor = getComputedStyle(document.body).getPropertyValue('--text-dark').trim();
+
+      updateClock();
+      setInterval(updateClock, 1000); // Update clock every second
+      loadDWLRData(); // Load DWLR and location data for dropdowns
+      loadNotificationsData(); // Load existing notifications from notifi.csv
+      // displaySentNotifications and updateDownloadNotificationsButtonState are called within loadNotificationsData
+      // renderNotificationChart is called within loadNotificationsData
+    });
+  </script>
+</body>
+</html>
