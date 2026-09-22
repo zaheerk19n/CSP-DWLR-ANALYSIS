@@ -1,6 +1,6 @@
 # Software Application for Analysis of DWLR Data and Alarm Generation
 
-A full-stack web application designed to process, analyze, and visualize **Digital Water Level Recorder (DWLR)** groundwater sensor data from CSV logs and trigger real-time alerts for critical water level drops. Developed as part of the Community Service Project (CSP) for the village of Mollur, Andhra Pradesh.
+A Demo web application designed to process, analyze, and visualize **Digital Water Level Recorder (DWLR)** groundwater sensor data from CSV logs and trigger real-time alerts for critical water level drops. Developed as part of the Community Service Project (CSP) for the village of Mollur, Andhra Pradesh.
 
 ---
 
